@@ -1,6 +1,81 @@
 #pragma once
 #include"pch.h"
 #include "framework.h"
+
+class CPacket {
+public:
+	CPacket():sHead(0), nLength(0), sCmd(0), sSum(0) {}
+	CPacket(const CPacket& pack) {
+		sHead = pack.sHead;
+		nLength = pack.nLength;
+		sCmd = pack.sCmd;
+		strData = pack.strData;
+		sSum = pack.sSum;
+	}
+	CPacket(const BYTE* pData, size_t& nSize) {
+		size_t i = 0;
+		for (; i < nSize; i++) {
+			if (*(WORD*)(pData + i) == 0xFEFF) {
+				sHead = *(WORD*)(pData + i);
+				i += 2; //解析到包头了，所以i+=2；跳过包头了，继续往后找，如果没有数据，还是要返回
+				break;
+			}
+		}
+		if (i + 4 + 2 + 2 >  nSize) {//包数据可能不全，或者包未能全部接收到
+			nSize = 0;
+			return;
+		}
+		nLength = *(DWORD*)(pData + i); i += 4;
+		if (nLength + i > nSize) {//包未完全接受到，数据不全
+			nSize = 0;
+			return;
+		}
+		sCmd = *(WORD*)(pData + i); i += 2;
+		if (nLength > 4) {
+			strData.resize(nLength - 2 - 2);
+			memcpy((void*)strData.c_str(), pData + i, nLength - 4);
+			i += nLength - 4;
+		}
+		sSum = *(WORD*)(pData + i); i += 2;
+		WORD sum = 0;
+		for (size_t j = 0; j < strData.size(); j++) {
+			sum += BYTE(strData[j] & 0xFF);
+		}
+		if (sum == sSum) {
+			nSize = i;//还要包括前面废弃的数据不能是 nLength + 4+2
+			return;
+		}
+		nSize = 0;
+		
+	}
+	~CPacket() = default;
+	CPacket& operator=( CPacket pack) noexcept {
+		swap(pack);
+		return *this;
+	}
+	void swap(CPacket& pack) noexcept {
+		std::swap(pack.sHead, sHead);
+		std::swap(pack.nLength, nLength);
+		std::swap(pack.sCmd, sCmd);
+		std::swap(pack.strData, strData);
+		std::swap(pack.sSum, sSum);
+	}
+public:
+	WORD sHead;//固定位FE FF
+	DWORD nLength;//包长度（从控制命令开始，到和校验结束）
+	WORD sCmd;//控制命令
+	std::string strData;//包数据
+	WORD sSum;//和校验
+
+};
+
+
+
+
+
+
+
+
 class CServerSocket
 {
 public:
@@ -48,17 +123,28 @@ public:
 
 		return true;
 	}
+#define BUFFER_SIZE 4096
 	int DealCommand()
 	{
 		if (m_client == -1) return -1;
-		char buffer[1024] = "";
+		char* buffer = new char[BUFFER_SIZE];
+		memset(buffer, 0,sizeof(buffer));
+		size_t index = 0;
 		while (true)
 		{
-			int len = recv(m_client, buffer, sizeof(buffer), 0);
+			size_t len = recv(m_client, buffer + index, BUFFER_SIZE-index, 0);
 			if (len == -1) {
 				return -1;
 			}
-			//TODO:处理命令
+			index += len;
+			len = index; //等于buffer中数据的大小
+			m_packet = CPacket((BYTE*)buffer, len);
+			if (len > 0) {
+				memmove(buffer, buffer + len, BUFFER_SIZE - len);
+				index -= len;
+				return m_packet.sCmd;
+			}
+
 		}
 	}
 	bool Send(const char* pData, size_t nSize)
@@ -69,7 +155,7 @@ public:
 private:
 	SOCKET m_client;
 	SOCKET m_socket;
-
+	CPacket m_packet;
 	//赋值运算符重载函数
 	CServerSocket& operator=(const CServerSocket& ss) = delete;
 	//拷贝构造函数
