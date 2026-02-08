@@ -109,7 +109,17 @@ public:
 #pragma pack(pop)
 
 
-
+typedef struct MouseEvent{
+	MouseEvent() {
+		nAction = 0;
+		nButton = -1; 
+		ptXY.x = 0;
+		ptXY.y = 0;
+	}
+	WORD nAction; //点击、移动、双击
+	WORD nButton; //左键、右键、中键
+	POINT ptXY;//坐标
+}MOUSEEV,*PMOUSEEV;
 
 
 
@@ -198,6 +208,13 @@ public:
 	bool GetFilePath(std::string& strPath) { //获取文件列表
 		if (m_packet.sCmd >=2 && m_packet.sCmd <=4) {
 			strPath = m_packet.strData;
+			return true;
+		}
+		return false;
+	}
+	bool GetMouseEvent(MOUSEEV& mouse) {
+		if (m_packet.sCmd == 5) {
+			memcpy(&mouse, m_packet.strData.c_str(), sizeof(MOUSEEV));
 			return true;
 		}
 		return false;
