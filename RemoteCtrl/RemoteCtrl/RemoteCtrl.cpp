@@ -18,7 +18,7 @@ CWinApp theApp;
 
 using namespace std;
 
-void Dump( BYTE* pData, size_t nSize) {
+void Dump(BYTE* pData, size_t nSize) {
     std::string strOut;
     for (size_t i = 0; i < nSize; i++) {
         char buf[8] = "";
@@ -55,7 +55,7 @@ typedef struct file_info {
         HaNext = true;
     }
     bool IsInvalid; //是否有效
-    char szFileName[256];//文件名
+    char szFileName[260];//文件名
     bool isDirectory; //是否为目录 0否 1是
     bool HaNext;//是否还有后续 0 没有 1 有
 }FILEINFO,*PILEINFO;
@@ -107,6 +107,49 @@ int MakeDirectoryInfo() {
 
     return 0;
 }
+int RunFile() {
+    string strPath;
+    if (CServerSocket::getInstance()->GetFilePath(strPath) == false) {
+        OutputDebugString(_T("当前的命令，不是获取文件列表，命令解析错误！！！"));
+        return -1;
+    }
+    ShellExecuteA(NULL, NULL, strPath.c_str(), NULL, NULL, SW_SHOWNORMAL);
+    CPacket pack(3, nullptr, 0);
+    CServerSocket::getInstance()->Send(pack);
+    return 0;
+}
+#pragma warning(disable:4966) // fopen sprintd strcpy strstr
+int DownloadFile() {
+    std::string strPath;
+    CServerSocket::getInstance()->GetFilePath(strPath);
+    long long data = 0;
+    FILE* pFile = nullptr;
+    errno_t err = fopen_s(&pFile,strPath.c_str(), "rb"); //服务端 上传 读 按照二进制方式读
+    if (err != 0 ) {
+        CPacket pack(4,(BYTE*)& data, 8);
+        CServerSocket::getInstance()->Send(pack);
+        return -1;
+    }
+    if (pFile != nullptr) {
+
+        fseek(pFile, 0, SEEK_END); //将文件指针移动到文件末尾
+        data = _ftelli64(pFile);
+        CPacket head(4, (BYTE*)&data, 8);
+        fseek(pFile, 0, SEEK_SET);//将文件指针移动到文件开头
+        char buffer[1024] = "";
+        size_t rlen = 0;
+        do {
+            rlen = fread(buffer, 1, 1024, pFile);
+            CPacket pack(4, (BYTE*)buffer, rlen);
+        } while (rlen >= 1024); //当读到的字节数小于1024说明读到文件尾
+        fclose(pFile);
+
+    }
+    CPacket pack(4, NULL, 0);
+    CServerSocket::getInstance()->Send(pack);
+   
+    return 0;
+}
 int main()
 {
     int nRetCode = 0;
@@ -151,6 +194,12 @@ int main()
                 break;
             case 2://查看指定目录下的文件
                 MakeDirectoryInfo();
+                break;
+            case 3: //打开文件
+                RunFile();
+                break;
+            case 4://下载文件
+                DownloadFile();
                 break;
 
             }
