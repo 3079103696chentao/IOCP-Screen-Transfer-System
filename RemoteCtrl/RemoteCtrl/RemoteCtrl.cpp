@@ -1,5 +1,5 @@
 ﻿// RemoteCtrl.cpp : 此文件包含 "main" 函数。程序执行将在此处开始并结束。
-//
+
 
 #include "pch.h"
 #include "framework.h"
@@ -45,7 +45,68 @@ int MakeDriverInfo() { // 1==>A 2==>B 3==>C
     //CServerSocket::getInstance()->Send(pack);
     return 0;
 }
+#include<io.h>//包含_findfist等函数
+#include<list>
+typedef struct file_info {
+    file_info() {
+        IsInvalid = false;
+        memset(szFileName, 0, sizeof(szFileName));
+        isDirectory = -1;
+        HaNext = true;
+    }
+    bool IsInvalid; //是否有效
+    char szFileName[256];//文件名
+    bool isDirectory; //是否为目录 0否 1是
+    bool HaNext;//是否还有后续 0 没有 1 有
+}FILEINFO,*PILEINFO;
 
+int MakeDirectoryInfo() {
+    std::string strPath; //文件路径
+    //std::list<FILEINFO>lstFileInfos;//存储文件信息
+
+    if (CServerSocket::getInstance()->GetFilePath(strPath) == false) {
+        OutputDebugString(_T("当前的命令，不是获取文件列表，命令解析错误！！！"));
+        return -1;
+    }
+    if (_chdir(strPath.c_str()) != 0) {
+        FILEINFO finfo;
+        finfo.IsInvalid = TRUE;
+        finfo.isDirectory = TRUE;
+        memcpy(finfo.szFileName, strPath.c_str(), strPath.size());
+        finfo.HaNext = false; //没有权限访问目录
+        CPacket pack(2, (BYTE*)&finfo, sizeof(finfo));
+        //lstFileInfos.push_back(finfo);
+        CServerSocket::getInstance()->Send(pack);
+
+        OutputDebugString(_T("没有权限，访问目录！！！"));
+        return -2;
+    }
+    _finddata_t fdata;
+    int hfind = 0;
+    if ((hfind = _findfirst("*", &fdata)) == -1) {
+        //查找失败
+        OutputDebugString(_T("没有找到任何文件！！！"));
+        return -3;
+    }
+    do {
+        FILEINFO finfo;
+        finfo.isDirectory = (fdata.attrib & _A_SUBDIR) != 0;
+        memcpy(finfo.szFileName, fdata.name, sizeof(fdata.name));
+        //lstFileInfos.push_back(finfo);
+        CPacket pack(2, (BYTE*)&finfo, sizeof(finfo));
+        
+        CServerSocket::getInstance()->Send(pack);
+
+    } while (!_findnext(hfind, &fdata));
+    //发送信息到控制端
+    FILEINFO finfo;
+    finfo.HaNext = false;
+    CPacket pack(2, (BYTE*)&finfo, sizeof(finfo));
+    CServerSocket::getInstance()->Send(pack);
+
+
+    return 0;
+}
 int main()
 {
     int nRetCode = 0;
@@ -85,8 +146,13 @@ int main()
             int ret = pserver->DealCommand();*/
             int nCmd = 1;
             switch (nCmd) {
-            case 1:MakeDriverInfo();
+            case 1: //查看磁盘分区
+                MakeDriverInfo();
                 break;
+            case 2://查看指定目录下的文件
+                MakeDirectoryInfo();
+                break;
+
             }
   
         
