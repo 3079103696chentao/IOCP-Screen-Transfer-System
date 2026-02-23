@@ -287,6 +287,80 @@ int SendScreen() {
     
     return 0;
 }
+#include"LockDialog.h"
+CLockDialog dlg;
+unsigned threadid = 0;
+
+unsigned _stdcall threadLockDlg(void* arg) {
+    TRACE("%s(%d):%d\r\n",__FUNCTION__, __LINE__, GetCurrentThreadId());
+
+    dlg.Create(IDD_DIALOG_INFO, NULL);
+    dlg.ShowWindow(SW_SHOW);
+    //遮蔽后台窗口
+    CRect rect;
+    rect.left = 0;
+    rect.top = 0;
+    rect.right = GetSystemMetrics(SM_CXFULLSCREEN);//获取横向分辨率
+    rect.bottom = GetSystemMetrics(SM_CYFULLSCREEN);//获取纵向分辨率
+    rect.bottom *= 1.1;
+    TRACE("right = %d bottom = %d\r\n", rect.right, rect.bottom);
+    dlg.MoveWindow(rect);//将对话框作用于全屏
+    //窗口置顶
+    //dlg.SetWindowPos(&dlg.wndTopMost, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE); //不改变大小和移动 置顶
+    //限制鼠标功能
+    ShowCursor(false);
+    //隐藏任务栏
+    ::ShowWindow(::FindWindow(_T("Shell_TrayWnd"), NULL), SW_HIDE);
+    //限制鼠标活动范围
+    //dlg.GetWindowRect(rect);
+    rect.left = 0;
+    rect.top = 0;
+    rect.right = 1;
+    rect.bottom = 1;
+    ClipCursor(rect);//限制鼠标活动范围 鼠标的范围在左上角
+    MSG msg;
+    //消息循环
+    while (GetMessage(&msg, NULL, 0, 0)) { //依赖于线程，只能接收该进程的消息，消息泵
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+        if (msg.message == WM_KEYDOWN) {
+            TRACE("msg: %08X wparam:%08x Iparam:%08X\r\n", msg.message, msg.wParam, msg.lParam);
+            if (msg.wParam == 0x1B) { //按下ESC退出
+                break;
+            }
+        }
+    }
+   
+    ShowCursor(true);
+    //显示任务栏
+    ::ShowWindow(::FindWindow(_T("Shell_TrayWnd"), NULL), SW_SHOW);
+    dlg.DestroyWindow();
+    _endthreadex(0);
+
+    return 0;
+}
+
+int LockMachine() { 
+    if (dlg.m_hWnd == NULL || dlg.m_hWnd == INVALID_HANDLE_VALUE) {
+        _beginthreadex(NULL, 0, threadLockDlg, NULL, 0, &threadid); //另开一个线程的原因，避免主线程卡在对话框函数，而不能接收其他消息，而这个线程进行消息循环
+        TRACE("threadid = %d\r\n", threadid);
+    }
+    CPacket pack(7, NULL, 0);
+    CServerSocket::getInstance()->Send(pack); 
+    
+    return 0;
+}
+
+int UnlockMachine() {
+    
+   // dlg.SendMessage(WM_KEYDOWN, 0x1b, 00010001);
+   // ::SendMessage(dlg.m_hWnd, WM_KEYDOWN, 0x1b, 00010001);
+    TRACE("now threadid = %d\r\n", threadid);
+    PostThreadMessage(threadid, WM_KEYDOWN, 0x1b, 00010001);
+    CPacket pack(7, NULL, 0);
+    CServerSocket::getInstance()->Send(pack);
+    return 0;
+}
 int main()
 {
     int nRetCode = 0;
@@ -324,7 +398,9 @@ int main()
                 }
             }
             int ret = pserver->DealCommand();*/
-            int nCmd = 6;
+            
+
+            int nCmd = 7;
             switch (nCmd) {
             case 1: //查看磁盘分区
                 MakeDriverInfo();
@@ -344,9 +420,26 @@ int main()
             case 6://发送屏幕内容==>发送屏幕的截图
                 SendScreen();
                 break;
+            case 7://锁机
+                LockMachine();
+                break;
+            case 8:
+                UnlockMachine();
+                break;
 
             }
-  
+            Sleep(5000);//主线程阻塞，避免主线程结束，避免对话框一闪而过
+            UnlockMachine();
+            TRACE("dlg.m_hWnd = %d \n", dlg.m_hWnd);
+            while (dlg.m_hWnd != NULL) {
+                Sleep(100);
+                TRACE("dlg.m_hWnd = %d \n", dlg.m_hWnd);
+            }
+            //主线程等待子线程的对话框线程结束
+           /* while (dlg.m_hWnd != NULL && dlg.m_hWnd != INVALID_HANDLE_VALUE) {
+                Sleep(100);
+                TRACE("dlg.m_hWnd = %d \n", dlg.m_hWnd);
+            }*/
         
         }
     }
