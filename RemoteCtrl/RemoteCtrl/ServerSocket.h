@@ -178,6 +178,7 @@ public:
 #define BUFFER_SIZE 4096
 	int DealCommand()
 	{
+		TRACE("‘⁄DealCommand¿Ô√Ê\r\n");
 		if (m_client == -1) return -1;
 		char* buffer = new char[BUFFER_SIZE];
 		if (buffer == NULL) {

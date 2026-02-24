@@ -42,8 +42,8 @@ int MakeDriverInfo() { // 1==>A 2==>B 3==>C
         }
     }
     CPacket pack(1, (BYTE*)result.c_str(), result.size());//打包
-    Dump(( BYTE*)pack.Data(), pack.Size());
-    //CServerSocket::getInstance()->Send(pack);
+    //Dump(( BYTE*)pack.Data(), pack.Size());
+    CServerSocket::getInstance()->Send(pack);
     return 0;
 }
 #include<io.h>//包含_findfist等函数

@@ -12,7 +12,7 @@
 #endif
 
 
-// CRemoteClientApp     
+// CRemoteClientApp    
 
 BEGIN_MESSAGE_MAP(CRemoteClientApp, CWinApp)
 	ON_COMMAND(ID_HELP, &CWinApp::OnHelp)
