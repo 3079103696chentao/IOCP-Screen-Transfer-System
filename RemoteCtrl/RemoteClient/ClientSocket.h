@@ -3,6 +3,7 @@
 #include"pch.h"
 #include "framework.h"
 #include<string>
+#include<vector>
 #pragma pack(push)
 #pragma pack(1)
 class CPacket {
@@ -116,7 +117,7 @@ typedef struct MouseEvent {
 
 
 
-std::string GetErrorInfo(int wsaErrCode) {
+inline std::string GetErrorInfo(int wsaErrCode) {
 	std::string ret;
 	LPVOID lpMsgBuf = NULL;
 	FormatMessage(
@@ -148,6 +149,8 @@ public:
 
 	bool InitSocket(const std::string& strIPAddress)
 	{
+		if (m_socket != INVALID_SOCKET) CloseSocket();
+
 		m_socket = socket(PF_INET, SOCK_STREAM, 0);
 		if (m_socket == -1) return false;
 		sockaddr_in serv_adr;
@@ -173,7 +176,7 @@ public:
 	int DealCommand()
 	{
 		if (m_socket == -1) return -1;
-		char* buffer = new char[BUFFER_SIZE];
+		char* buffer = m_buffer.data();
 		memset(buffer, 0, sizeof(buffer));
 		size_t index = 0;
 		while (true)
@@ -199,6 +202,7 @@ public:
 		return send(m_socket, pData, nSize, 0) > 0;
 	}
 	bool Send(CPacket& pack) {
+		TRACE("m_socket = %d\r\n", m_socket);
 		if (m_socket == -1) return false;
 		return send(m_socket, pack.Data(), pack.Size(), 0) > 0;
 	}
@@ -216,7 +220,16 @@ public:
 		}
 		return false;
 	}
+
+	CPacket& GetPacket() {
+		return m_packet;
+	}
+	void CloseSocket() {
+		closesocket(m_socket);
+		m_socket == INVALID_SOCKET;
+	}
 private:
+	std::vector<char>m_buffer;
 	SOCKET m_socket;
 	CPacket m_packet;
 	//赋值运算符重载函数
@@ -232,6 +245,7 @@ private:
 			MessageBox(NULL, _T("无法初始化套接字环境,请检查网络设置"), _T("初始化错误！"), MB_OK | MB_ICONERROR);
 			exit(0);
 		}
+		m_buffer.resize(BUFFER_SIZE);
 	}
 	//析构函数
 	~CClientSocket() {
