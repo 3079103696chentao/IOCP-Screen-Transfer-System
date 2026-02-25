@@ -10,11 +10,11 @@ public:
 	//打包
 	CPacket(WORD nCmd, const BYTE* pData, size_t nSize) {
 		sHead = 0xFEFF;
-		nLength = nSize + 4;
+		nLength = (DWORD)nSize + 4;
 		sCmd = nCmd;
 		if (nSize > 0) {
 			strData.resize(nSize);
-			memcpy((void*)strData.c_str(), pData, nSize);
+			memcpy(&strData[0], pData, nSize);
 		}
 		else {
 			strData.clear();
@@ -121,6 +121,18 @@ typedef struct MouseEvent{
 	POINT ptXY;//坐标
 }MOUSEEV,*PMOUSEEV;
 
+typedef struct file_info {
+	file_info() {
+		IsInvalid = false;
+		memset(szFileName, 0, sizeof(szFileName));
+		isDirectory = -1;
+		HaNext = true;
+	}
+	bool IsInvalid; //是否有效
+	char szFileName[260];//文件名
+	bool isDirectory; //是否为目录 0否 1是
+	bool HaNext;//是否还有后续 0 没有 1 有
+}FILEINFO, * PILEINFO;
 
 
 

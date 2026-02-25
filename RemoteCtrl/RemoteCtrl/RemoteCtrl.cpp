@@ -48,18 +48,7 @@ int MakeDriverInfo() { // 1==>A 2==>B 3==>C
 }
 #include<io.h>//包含_findfist等函数
 #include<list>
-typedef struct file_info {
-    file_info() {
-        IsInvalid = false;
-        memset(szFileName, 0, sizeof(szFileName));
-        isDirectory = -1;
-        HaNext = true;
-    }
-    bool IsInvalid; //是否有效
-    char szFileName[260];//文件名
-    bool isDirectory; //是否为目录 0否 1是
-    bool HaNext;//是否还有后续 0 没有 1 有
-}FILEINFO,*PILEINFO;
+
 
 int MakeDirectoryInfo() {
     std::string strPath; //文件路径
@@ -71,9 +60,6 @@ int MakeDirectoryInfo() {
     }
     if (_chdir(strPath.c_str()) != 0) {
         FILEINFO finfo;
-        finfo.IsInvalid = TRUE;
-        finfo.isDirectory = TRUE;
-        memcpy(finfo.szFileName, strPath.c_str(), strPath.size());
         finfo.HaNext = false; //没有权限访问目录
         CPacket pack(2, (BYTE*)&finfo, sizeof(finfo));
         //lstFileInfos.push_back(finfo);
@@ -82,17 +68,28 @@ int MakeDirectoryInfo() {
         OutputDebugString(_T("没有权限，访问目录！！！"));
         return -2;
     }
+    char szCurrentPath2[MAX_PATH] = { 0 };
+    if (_getcwd(szCurrentPath2, MAX_PATH) != NULL) {
+        TRACE("切换目录后的工作目录: %s\r\n", szCurrentPath2);
+        OutputDebugStringA(("切换后当前目录: " + std::string(szCurrentPath2) + "\n").c_str());
+    }
     _finddata_t fdata;
-    int hfind = 0;
+    long long hfind = 0; //64位编译器 int长度不够
     if ((hfind = _findfirst("*", &fdata)) == -1) {
         //查找失败
         OutputDebugString(_T("没有找到任何文件！！！"));
+        FILEINFO finfo;
+        finfo.HaNext = false; //没有权限访问目录
+        CPacket pack(2, (BYTE*)&finfo, sizeof(finfo));
+        CServerSocket::getInstance()->Send(pack);
+       
         return -3;
     }
     do {
         FILEINFO finfo;
         finfo.isDirectory = (fdata.attrib & _A_SUBDIR) != 0;
         memcpy(finfo.szFileName, fdata.name, sizeof(fdata.name));
+        TRACE("[%s]\r\n", finfo.szFileName);
         //lstFileInfos.push_back(finfo);
         CPacket pack(2, (BYTE*)&finfo, sizeof(finfo));
         
@@ -302,7 +299,7 @@ unsigned _stdcall threadLockDlg(void* arg) {
     rect.top = 0;
     rect.right = GetSystemMetrics(SM_CXFULLSCREEN);//获取横向分辨率
     rect.bottom = GetSystemMetrics(SM_CYFULLSCREEN);//获取纵向分辨率
-    rect.bottom *= 1.1;
+    rect.bottom = (LONG)rect.bottom*1.1;
     TRACE("right = %d bottom = %d\r\n", rect.right, rect.bottom);
     dlg.MoveWindow(rect);//将对话框作用于全屏
     //窗口置顶

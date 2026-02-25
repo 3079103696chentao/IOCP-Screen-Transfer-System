@@ -12,7 +12,7 @@ public:
 	//打包
 	CPacket(WORD nCmd, const BYTE* pData, size_t nSize) {
 		sHead = 0xFEFF;
-		nLength = nSize + 4;
+		nLength = (DWORD)nSize + 4;
 		sCmd = nCmd;
 		if (nSize > 0) {
 			strData.resize(nSize);
@@ -115,7 +115,18 @@ typedef struct MouseEvent {
 	POINT ptXY;//坐标
 }MOUSEEV, * PMOUSEEV;
 
-
+typedef struct file_info {
+	file_info() {
+		IsInvalid = false;
+		memset(szFileName, 0, sizeof(szFileName));
+		isDirectory = -1;
+		HaNext = true;
+	}
+	bool IsInvalid; //是否有效
+	char szFileName[260];//文件名
+	bool isDirectory; //是否为目录 0否 1是
+	bool HaNext;//是否还有后续 0 没有 1 有
+}FILEINFO, * PFILEINFO;
 
 inline std::string GetErrorInfo(int wsaErrCode) {
 	std::string ret;
@@ -156,9 +167,9 @@ public:
 		sockaddr_in serv_adr;
 		memset(&serv_adr, 0, sizeof(serv_adr));
 		serv_adr.sin_family = AF_INET;
-		TRACE("addr %08X nIP %08X\r\n", inet_addr("127.0.0.1"), nIP);//\r是回车，将光标移动到当前行的开头
+		//TRACE("addr %08X nIP %08X\r\n", inet_addr("127.0.0.1"), nIP);//\r是回车，将光标移动到当前行的开头
 		//\n换行，将光标移动到下一行
-		serv_adr.sin_addr.s_addr = inet_addr("127.0.0.1");
+		//serv_adr.sin_addr.s_addr = inet_addr("127.0.0.1");
 		serv_adr.sin_addr.s_addr = htonl(nIP);
 		serv_adr.sin_port = htons(nPort);
 		if (serv_adr.sin_addr.s_addr == INADDR_NONE) {
@@ -180,20 +191,23 @@ public:
 	{
 		if (m_socket == -1) return -1;
 		char* buffer = m_buffer.data();
-		memset(buffer, 0, m_buffer.size());
+		//memset(buffer, 0, m_buffer.size());
 		size_t index = 0;
 		while (true)
 		{
 			size_t len = recv(m_socket, buffer + index, BUFFER_SIZE - index, 0);
-			if (len == -1) {
+			TRACE("recv len:%d,  index :%d\r\n", len, index);
+			if ((len <= 0)&&(index<=0)) {
 				return -1;
 			}
+			
 			index += len;
 			len = index; //等于buffer中数据的大小
 			m_packet = CPacket((BYTE*)buffer, len);
 			if (len > 0) {
 				memmove(buffer, buffer + len, BUFFER_SIZE - len);
 				index -= len;
+				//TRACE("index :%d\r\n", index);
 				return m_packet.sCmd;
 			}
 
