@@ -198,7 +198,7 @@ public:
 			size_t len = recv(m_socket, buffer + index, BUFFER_SIZE - index, 0);
 			TRACE("recv len:%d,  index :%d\r\n", len, index);
 			if ((len <= 0)&&(index<=0)) {
-				return -1;
+				return 0;
 			}
 			
 			index += len;
