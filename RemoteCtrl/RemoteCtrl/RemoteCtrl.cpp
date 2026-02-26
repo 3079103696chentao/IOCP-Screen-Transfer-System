@@ -133,12 +133,14 @@ int DownloadFile() {
         fseek(pFile, 0, SEEK_END); //将文件指针移动到文件末尾
         data = _ftelli64(pFile);
         CPacket head(4, (BYTE*)&data, 8);
+        CServerSocket::getInstance()->Send(head);
         fseek(pFile, 0, SEEK_SET);//将文件指针移动到文件开头
         char buffer[1024] = "";
         size_t rlen = 0;
         do {
             rlen = fread(buffer, 1, 1024, pFile);
             CPacket pack(4, (BYTE*)buffer, rlen);
+            CServerSocket::getInstance()->Send(pack);
         } while (rlen >= 1024); //当读到的字节数小于1024说明读到文件尾
         fclose(pFile);
 

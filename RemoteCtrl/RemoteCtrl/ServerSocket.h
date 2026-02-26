@@ -202,7 +202,7 @@ public:
 		while (true)
 		{
 			size_t len = recv(m_client, buffer + index, BUFFER_SIZE-index, 0);
-			if (len == -1) {
+			if (len <= 0 && index==0) {
 				delete[]buffer;
 				return -1;
 			}
