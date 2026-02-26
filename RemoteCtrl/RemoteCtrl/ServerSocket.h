@@ -129,9 +129,9 @@ typedef struct file_info {
 		HaNext = true;
 	}
 	bool IsInvalid; //是否有效
-	char szFileName[260];//文件名
 	bool isDirectory; //是否为目录 0否 1是
 	bool HaNext;//是否还有后续 0 没有 1 有
+	char szFileName[260];//文件名
 }FILEINFO, * PILEINFO;
 
 

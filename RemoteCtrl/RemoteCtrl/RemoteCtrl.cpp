@@ -68,11 +68,11 @@ int MakeDirectoryInfo() {
         OutputDebugString(_T("没有权限，访问目录！！！"));
         return -2;
     }
-    char szCurrentPath2[MAX_PATH] = { 0 };
+   /* char szCurrentPath2[MAX_PATH] = { 0 };
     if (_getcwd(szCurrentPath2, MAX_PATH) != NULL) {
         TRACE("切换目录后的工作目录: %s\r\n", szCurrentPath2);
         OutputDebugStringA(("切换后当前目录: " + std::string(szCurrentPath2) + "\n").c_str());
-    }
+    }*/
     _finddata_t fdata;
     long long hfind = 0; //64位编译器 int长度不够
     if ((hfind = _findfirst("*", &fdata)) == -1) {
@@ -85,17 +85,20 @@ int MakeDirectoryInfo() {
        
         return -3;
     }
+    int Count = 0;
     do {
         FILEINFO finfo;
         finfo.isDirectory = (fdata.attrib & _A_SUBDIR) != 0;
         memcpy(finfo.szFileName, fdata.name, sizeof(fdata.name));
-        TRACE("[%s]\r\n", finfo.szFileName);
+        //TRACE("[%s]\r\n", finfo.szFileName);
         //lstFileInfos.push_back(finfo);
         CPacket pack(2, (BYTE*)&finfo, sizeof(finfo));
         
         CServerSocket::getInstance()->Send(pack);
+        Count++;
 
     } while (!_findnext(hfind, &fdata));
+    TRACE("Server send Count = %d\r\n", Count);
     //发送信息到控制端
     FILEINFO finfo;
     finfo.HaNext = false;

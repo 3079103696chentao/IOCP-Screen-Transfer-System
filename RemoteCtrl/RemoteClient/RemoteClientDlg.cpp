@@ -16,6 +16,7 @@
 
 // 用于应用程序“关于”菜单项的 CAboutDlg 对话框
 
+
 class CAboutDlg : public CDialogEx
 {
 public:
@@ -75,7 +76,7 @@ int CRemoteClientDlg::SendCommandPacket(int nCmd,bool bAutoClose, BYTE* pData, s
 	CClientSocket* pClient = CClientSocket::getInstance();
 	bool ret = pClient->InitSocket(m_server_address, atoi((LPCTSTR)m_nPort));//返回值的处理
 	if (!ret) {
-		AfxMessageBox("网络初始化失败");
+		AfxMessageBox(_T("网络初始化失败"));
 		return -1;
 	}
 	CPacket pack(nCmd, pData, nLength);
@@ -271,11 +272,11 @@ void CRemoteClientDlg::LoadFileInfo(){
 	m_List.DeleteAllItems();
 	CString strPath = GetPath(hTreeSelected);
 	int nCmd = SendCommandPacket(2, false, (BYTE*)(LPCTSTR)strPath, strPath.GetLength());
-	PFILEINFO pInfo = (PFILEINFO)CClientSocket::getInstance()->GetPacket().strData.c_str();
+	PFILEINFO pInfo = (PFILEINFO)CClientSocket::getInstance()->GetPacket().strData.c_str() ;
 	CClientSocket* pClient = CClientSocket::getInstance();
-
+	int Count = 0;
 	while (pInfo->HaNext) {
-		TRACE("[%s] isdir %d\r\n", pInfo->szFileName, pInfo->isDirectory);
+	//	TRACE("[%s] isdir %d\r\n", pInfo->szFileName, pInfo->isDirectory);
 		if (pInfo->isDirectory) {
 			if ((CString(pInfo->szFileName) == ".") || (CString(pInfo->szFileName) == "..")) {
 
@@ -293,12 +294,15 @@ void CRemoteClientDlg::LoadFileInfo(){
 			m_List.InsertItem(0, pInfo->szFileName);
 		}
 		
+		Count++;
 		int cmd = pClient->DealCommand();
-		TRACE("ack:%d\r\n", cmd);
+		//TRACE("ack:%d\r\n", cmd);
 		if (cmd < 0) break;
 		pInfo = (PFILEINFO)CClientSocket::getInstance()->GetPacket().strData.c_str();
 	}
 	pClient->CloseSocket();
+
+	TRACE("Client get Count: %d\r\n", Count);
 }
 
 CString CRemoteClientDlg::GetPath(HTREEITEM hTree) {
@@ -385,14 +389,14 @@ void CRemoteClientDlg::OnDownloadFile()
 		do {
 			int ret = SendCommandPacket(4, false, (BYTE*)(LPCTSTR)strFile, strFile.GetLength());
 			if (ret < 0) {
-				AfxMessageBox("执行下载命令失败！！！");
+				AfxMessageBox(_T("执行下载命令失败！！！"));
 				TRACE("执行下载失败:ret = %d\r\n", ret);
 				break;
 			}
 
 			long long nLength = *(long long*)pClient->GetPacket().strData.c_str();
 			if (nLength == 0) {
-				AfxMessageBox("文件长度为0或者无法读取文件!!!");
+				AfxMessageBox(_T("文件长度为0或者无法读取文件!!!"));
 				break;
 			}
 			long long nCount = 0;
@@ -400,7 +404,7 @@ void CRemoteClientDlg::OnDownloadFile()
 			while (nCount < nLength) {
 				ret = pClient->DealCommand();
 				if (ret < 0) {
-					AfxMessageBox("传输失败！！！");
+					AfxMessageBox(_T("传输失败！！！"));
 					TRACE("传输失败：ret = %d\r\n", ret);
 					break;
 				}
@@ -412,7 +416,7 @@ void CRemoteClientDlg::OnDownloadFile()
 		pFile = nullptr;
 		pClient->CloseSocket();
 	}
-
+	//TODO:大文件传输需要额外的处理
 	
 }
 
@@ -426,10 +430,10 @@ void CRemoteClientDlg::OnDeleteFile()
 	strFile = strPath + strFile;
 	int ret = SendCommandPacket(9, true, (BYTE*)(LPCTSTR)strFile, strFile.GetLength());
 	if (ret < 0) {
-		AfxMessageBox("删除文件命令执行失败！！！");
+		AfxMessageBox(_T("删除文件命令执行失败！！！"));
 		return;
 	}
-	LoadFileCurrent();
+	LoadFileCurrent();//TODO:文件夹中文件显示，由BUG，会缺漏文件
 }
 
 void CRemoteClientDlg::OnRunFile()
@@ -442,7 +446,7 @@ void CRemoteClientDlg::OnRunFile()
 	strFile = strPath + strFile;
 	int ret = SendCommandPacket(3, true, (BYTE*)(LPCTSTR)strFile, strFile.GetLength());
 	if (ret < 0) {
-		AfxMessageBox("打开文件命令执行失败！！！");
+		AfxMessageBox(_T("打开文件命令执行失败！！！"));
 		return;
 	}
 }

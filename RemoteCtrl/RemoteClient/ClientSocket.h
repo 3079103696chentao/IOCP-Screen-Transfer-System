@@ -37,7 +37,10 @@ public:
 		size_t i = 0;
 		for (; i < nSize; i++) {
 			if (*(WORD*)(pData + i) == 0xFEFF) {
+
+				//TRACE("%02X\r\n", *(WORD*)(pData + i));
 				sHead = *(WORD*)(pData + i);
+				
 				i += 2; //解析到包头了，所以i+=2；跳过包头了，继续往后找，如果没有数据，还是要返回
 				break;
 			}
@@ -54,8 +57,16 @@ public:
 		sCmd = *(WORD*)(pData + i); i += 2;
 		if (nLength > 4) {
 			strData.resize(nLength - 2 - 2);
+
+			/*for (size_t j = 0; j < nLength - 4; j++) {
+				TRACE("%02X\r\n", ((BYTE*)(pData + i))[j]);
+			}*/
+
 			memcpy((void*)strData.c_str(), pData + i, nLength - 4);
 			i += nLength - 4;
+			//TRACE("%d\r\n", sizeof(bool));
+			//TRACE("%02X\r\n", *(WORD*)(pData + i));
+			TRACE("%s\r\n", strData.c_str()+3);
 		}
 		sSum = *(WORD*)(pData + i); i += 2;
 		WORD sum = 0;
@@ -123,9 +134,9 @@ typedef struct file_info {
 		HaNext = true;
 	}
 	bool IsInvalid; //是否有效
-	char szFileName[260];//文件名
 	bool isDirectory; //是否为目录 0否 1是
 	bool HaNext;//是否还有后续 0 没有 1 有
+	char szFileName[260];//文件名
 }FILEINFO, * PFILEINFO;
 
 inline std::string GetErrorInfo(int wsaErrCode) {
@@ -140,7 +151,17 @@ inline std::string GetErrorInfo(int wsaErrCode) {
 	ret = (char*)lpMsgBuf;
 	return ret;
 }
-
+inline void Dump(BYTE* pData, size_t nSize) {
+	std::string strOut;
+	for (size_t i = 0; i < nSize; i++) {
+		char buf[8] = "";
+		if (i > 0 && (i % 16 == 0)) strOut += "\n";
+		snprintf(buf, sizeof(buf), "%02X ", pData[i] & 0xFF); //不足两位补0，和0xFF，确保只取低八位
+		strOut += buf;
+	}
+	strOut += "\n";
+	OutputDebugStringA(strOut.c_str());
+}
 class CClientSocket
 {
 public:
@@ -173,12 +194,12 @@ public:
 		serv_adr.sin_addr.s_addr = htonl(nIP);
 		serv_adr.sin_port = htons(nPort);
 		if (serv_adr.sin_addr.s_addr == INADDR_NONE) {
-			AfxMessageBox("指定的ip地址，不存在！");
+			AfxMessageBox(_T("指定的ip地址，不存在！"));
 			return false;
 		}
 		int ret = connect(m_socket, (sockaddr*)&serv_adr, sizeof(serv_adr));
 		if (ret == -1) {
-			AfxMessageBox("连接失败");
+			AfxMessageBox(_T("连接失败"));
 			TRACE("连接失败：%d %s\r\n", WSAGetLastError(),GetErrorInfo(WSAGetLastError()).c_str());
 			return false;
 		}
@@ -192,15 +213,15 @@ public:
 		if (m_socket == -1) return -1;
 		char* buffer = m_buffer.data();
 		//memset(buffer, 0, m_buffer.size());
-		size_t index = 0;
+		static size_t index = 0;
 		while (true)
 		{
 			size_t len = recv(m_socket, buffer + index, BUFFER_SIZE - index, 0);
 			TRACE("recv len:%d,  index :%d\r\n", len, index);
-			if ((len <= 0)&&(index<=0)) {
-				return 0;
+			if (len <= 0 && index <=0) {
+				return -1;
 			}
-			
+			Dump((BYTE*)buffer, len);
 			index += len;
 			len = index; //等于buffer中数据的大小
 			m_packet = CPacket((BYTE*)buffer, len);
@@ -263,6 +284,7 @@ private:
 			exit(0);
 		}
 		m_buffer.resize(BUFFER_SIZE);
+		memset(m_buffer.data(), 0, BUFFER_SIZE);
 	}
 	//析构函数
 	~CClientSocket() {
