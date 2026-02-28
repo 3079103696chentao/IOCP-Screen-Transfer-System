@@ -543,6 +543,10 @@ LRESULT CRemoteClientDlg::OnSendPacket(WPARAM wParam, LPARAM lParam)
 	    ret = SendCommandPacket(wParam >> 1, wParam & 1, (BYTE*)(LPCTSTR)strFile, strFile.GetLength());
 	    break;
 	}
+	case 5: {
+		ret = SendCommandPacket(cmd, wParam & 1, (BYTE*)lParam, sizeof(MOUSEEV));
+		break;
+	}
 	case 6:{
 		ret = SendCommandPacket(cmd, wParam & 1);
 	    break;

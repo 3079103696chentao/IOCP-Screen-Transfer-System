@@ -192,6 +192,9 @@ int MouseEvent() {
             break;
         default:break;
         }
+
+        TRACE("mouse event:%08x x: %d y:%d\r\n", nFlags, mouse.ptXY.x, mouse.ptXY.y);
+        
         switch (nFlags) {
         case 0x21: //左键双击
             mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, GetMessageExtraInfo());
@@ -238,8 +241,9 @@ int MouseEvent() {
             mouse_event(MOUSEEVENTF_MOVE, mouse.ptXY.x, mouse.ptXY.y, 0, GetMessageExtraInfo());
             break;
         }
-        CPacket pack(4, NULL, 0);
+        CPacket pack(5, NULL, 0);
         CServerSocket::getInstance()->Send(pack);
+        return 0;
     }
     else {
         OutputDebugString(_T("获取鼠标操作参数失败！！！"));

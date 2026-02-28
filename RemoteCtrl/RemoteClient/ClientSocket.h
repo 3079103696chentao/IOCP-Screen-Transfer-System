@@ -207,7 +207,7 @@ public:
 		return true;
 	}
 	
-#define BUFFER_SIZE 409600
+#define BUFFER_SIZE 2048000
 	int DealCommand()
 	{
 		if (m_socket == -1) return -1;
@@ -221,7 +221,7 @@ public:
 			if (len <= 0 && index <=0) {
 				return -1;
 			}
-			Dump((BYTE*)buffer, len);
+			//Dump((BYTE*)buffer, len);
 			index += len;
 			len = index; //等于buffer中数据的大小
 			m_packet = CPacket((BYTE*)buffer, len);
