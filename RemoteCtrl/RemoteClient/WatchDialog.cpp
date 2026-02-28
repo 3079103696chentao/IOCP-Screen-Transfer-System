@@ -24,6 +24,7 @@ CWatchDialog::~CWatchDialog()
 void CWatchDialog::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
+	DDX_Control(pDX, IDC_WATCH, m_picture);
 }
 
 
@@ -52,7 +53,16 @@ void CWatchDialog::OnTimer(UINT_PTR nIDEvent)
 	if (nIDEvent == 0) {
 		CRemoteClientDlg* pParent = (CRemoteClientDlg*)GetParent();
 		if (pParent->isFull()) {
-
+			//DC device context
+			CRect rect;
+			m_picture.GetWindowRect(rect);
+			/*pParent->GetImage().BitBlt(m_picture.GetDC()->GetSafeHdc()
+				, 0, 0, SRCCOPY);*/
+			pParent->GetImage().StretchBlt(m_picture.GetDC()->GetSafeHdc()
+				, 0, 0, rect.Width(), rect.Height(),SRCCOPY);//缩放
+			m_picture.InvalidateRect(NULL); //进行重绘
+			pParent->GetImage().Destroy();
+			pParent->SetImageStatus();
 		}
 	}
 	CDialogEx::OnTimer(nIDEvent);

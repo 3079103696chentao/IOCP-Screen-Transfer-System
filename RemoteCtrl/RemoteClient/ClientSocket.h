@@ -66,7 +66,7 @@ public:
 			i += nLength - 4;
 			//TRACE("%d\r\n", sizeof(bool));
 			//TRACE("%02X\r\n", *(WORD*)(pData + i));
-			TRACE("%s\r\n", strData.c_str()+3);
+			TRACE("%s\r\n", strData.c_str()+12);
 		}
 		sSum = *(WORD*)(pData + i); i += 2;
 		WORD sum = 0;
@@ -207,7 +207,7 @@ public:
 		return true;
 	}
 	
-#define BUFFER_SIZE 4096
+#define BUFFER_SIZE 409600
 	int DealCommand()
 	{
 		if (m_socket == -1) return -1;

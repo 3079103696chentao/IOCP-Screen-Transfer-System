@@ -244,41 +244,42 @@ void CRemoteClientDlg::threadWatchData(){
 	do {
 		pClient = CClientSocket::getInstance();
 	} while (pClient == nullptr);
-
 	for (;;) {//无限循环
-		CPacket pack(6, NULL, 0);
-		bool ret = pClient->Send(pack);
-		if (ret) {
-			int cmd = pClient->DealCommand();
-			if (cmd == 6) {
-				if (m_isFull == false) {
-					//更新数据到缓存
-					BYTE* pData = (BYTE*)pClient->GetPacket().strData.c_str();//存入Image
-					HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, 0);
-					if (hMem == NULL) {
-						TRACE(_T("内存不足！"));
-						Sleep(1);
-						continue;
-					}
-					IStream* pStream = nullptr;
-					HRESULT hRet = CreateStreamOnHGlobal(hMem, TRUE, &pStream);
-					if (hRet == S_OK) {
-						ULONG length = 0;
-						pStream->Write(pData, pClient->GetPacket().strData.size(), &length);
-						LARGE_INTEGER bg = { 0 };
-						pStream->Seek(bg, STREAM_SEEK_SET, NULL); //将流指针指向文件开头
-						m_image.Load(pStream);
-						m_isFull = true;
-					}
-					
+		/*CPacket pack(6, NULL, 0);
+		bool ret = pClient->Send(pack*/
+		/*int ret = SendCommandPacket(6, false, nullptr, 0);*/
+		
+		if (m_isFull == false) {
+			int ret = SendMessage(WM_SEND_PACKET, 6 << 1 | 1);
+			if (ret == 6) {
+				//更新数据到缓存
+				BYTE* pData = (BYTE*)pClient->GetPacket().strData.c_str();//存入Image
+				HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, 0);
+				if (hMem == NULL) {
+					TRACE(_T("内存不足！"));
+					Sleep(1);
+					continue;
 				}
-			    
+				IStream* pStream = nullptr;
+				HRESULT hRet = CreateStreamOnHGlobal(hMem, TRUE, &pStream);
+				if (hRet == S_OK) {
+					ULONG length = 0;
+					pStream->Write(pData, pClient->GetPacket().strData.size(), &length);
+					LARGE_INTEGER bg = { 0 };
+					pStream->Seek(bg, STREAM_SEEK_SET, NULL); //将流指针指向文件开头
+					m_image.Load(pStream);
+					m_isFull = true;
+				}
+			}
+			else {
+				Sleep(1);//当网络不存在，建立连接之后，网络突然断掉，返回-1，CPU拉满，占100%
+				//允许执行其他程序，避免程序卡死
 			}
 		}
 		else {
-			Sleep(1);//当网络不存在，建立连接之后，网络突然断掉，返回-1，CPU拉满，占100%
-		    //允许执行其他程序，避免程序卡死
+			Sleep(1);
 		}
+		
 		
 	}
 
@@ -534,9 +535,21 @@ void CRemoteClientDlg::OnRunFile()
 //4.实现消息响应函数
 LRESULT CRemoteClientDlg::OnSendPacket(WPARAM wParam, LPARAM lParam)
 {
-	CString strFile = (LPCTSTR)lParam;
-	int ret = SendCommandPacket(wParam>>1, wParam&1, (BYTE*)(LPCTSTR)strFile, strFile.GetLength());
-
+	int ret;
+	int cmd = wParam >> 1;
+	switch (cmd) {
+	case 4:{
+		CString strFile = (LPCTSTR)lParam;
+	    ret = SendCommandPacket(wParam >> 1, wParam & 1, (BYTE*)(LPCTSTR)strFile, strFile.GetLength());
+	    break;
+	}
+	case 6:{
+		ret = SendCommandPacket(cmd, wParam & 1);
+	    break;
+	}
+	default:
+		ret = -1;
+}
 	return ret;
 }
 
