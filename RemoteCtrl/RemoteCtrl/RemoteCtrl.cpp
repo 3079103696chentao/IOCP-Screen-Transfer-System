@@ -238,7 +238,8 @@ int MouseEvent() {
             mouse_event(MOUSEEVENTF_MIDDLEUP, 0, 0, 0, GetMessageExtraInfo());
             break;
         case 0x08: //鼠标移动
-            mouse_event(MOUSEEVENTF_MOVE, mouse.ptXY.x, mouse.ptXY.y, 0, GetMessageExtraInfo());
+            mouse_event(MOUSEEVENTF_MOVE|MOUSEEVENTF_ABSOLUTE, mouse.ptXY.x, mouse.ptXY.y, 0, GetMessageExtraInfo());
+            TRACE("鼠标移动 mouse.ptXY.x：%d,mouse.ptXY.y:%d\r\n", mouse.ptXY.x, mouse.ptXY.y);
             break;
         }
         CPacket pack(5, NULL, 0);
@@ -258,7 +259,7 @@ int SendScreen() {
     int nWidth = GetDeviceCaps(hScreen, HORZRES);
     int nHeight = GetDeviceCaps(hScreen, VERTRES);
     screen.Create(nWidth, nHeight, nBitPerPixel);
-    BitBlt(screen.GetDC(), 0, 0, 1920, 1020, hScreen, 0, 0, SRCCOPY);
+    BitBlt(screen.GetDC(), 0, 0, nWidth, nHeight, hScreen, 0, 0, SRCCOPY);
     ReleaseDC(NULL, hScreen);
     HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, 0);//将文件保存到内存中
     if (hMem == NULL) return -1;

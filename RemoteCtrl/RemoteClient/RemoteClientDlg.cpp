@@ -142,7 +142,9 @@ BOOL CRemoteClientDlg::OnInitDialog()
 
 	// TODO: 在此添加额外的初始化代码
 	UpdateData();
-	m_server_address = 0x7F000001;//相当于127.0.0.1
+    m_server_address =0xAC1544B5;//远程电脑
+	//m_server_address = 0x7F000001;//本地
+
 	m_nPort = _T("9527");
 	UpdateData(false);
 	m_dlgStatus.Create(IDD_DLG_STATUS, this);
@@ -244,7 +246,7 @@ void CRemoteClientDlg::threadWatchData(){
 	do {
 		pClient = CClientSocket::getInstance();
 	} while (pClient == nullptr);
-	for (;;) {//无限循环
+	while(!m_isClosed) {//无限循环
 		/*CPacket pack(6, NULL, 0);
 		bool ret = pClient->Send(pack*/
 		/*int ret = SendCommandPacket(6, false, nullptr, 0);*/
@@ -267,6 +269,9 @@ void CRemoteClientDlg::threadWatchData(){
 					pStream->Write(pData, pClient->GetPacket().strData.size(), &length);
 					LARGE_INTEGER bg = { 0 };
 					pStream->Seek(bg, STREAM_SEEK_SET, NULL); //将流指针指向文件开头
+					if ((HBITMAP)m_image != NULL) {
+						m_image.Destroy();
+					}
 					m_image.Load(pStream);
 					m_isFull = true;
 				}
@@ -560,12 +565,14 @@ LRESULT CRemoteClientDlg::OnSendPacket(WPARAM wParam, LPARAM lParam)
 
 void CRemoteClientDlg::OnBnClickedBtnStartWatch()
 {
-	// TODO: 在此添加控件通知处理程序代码
-	_beginthread(CRemoteClientDlg::threadEntryForWatchData, 0, this);
-	GetDlgItem(IDC_BTN_START_WATCH)->EnableWindow(FALSE);//
+	m_isClosed = false;
+	HANDLE hThread = (HANDLE)_beginthread(CRemoteClientDlg::threadEntryForWatchData, 0, this);
+	//GetDlgItem(IDC_BTN_START_WATCH)->EnableWindow(FALSE);//
 	CWatchDialog dlg(this);
-	dlg.DoModal();//模态对话框，锁死产生他的那个父窗口，不能点击父窗口上的任何按钮，也不能切换到主界面的其他菜单。
-
+	dlg.DoModal();///对话框被阻塞在这里，直到对话框.关闭模态对话框，锁死产生他的
+	//那个父窗口，不能点击父窗口上的任何按钮，也不能切换到主界面的其他菜单。
+	m_isClosed = true;
+	WaitForSingleObject(hThread, 500);
 }
 
 void CRemoteClientDlg::OnTimer(UINT_PTR nIDEvent)
