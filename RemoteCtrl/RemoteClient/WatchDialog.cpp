@@ -40,6 +40,8 @@ BEGIN_MESSAGE_MAP(CWatchDialog, CDialogEx)
 	ON_WM_RBUTTONUP()
 	ON_WM_MOUSEMOVE()
 	ON_STN_CLICKED(IDC_WATCH, &CWatchDialog::OnStnClickedWatch)
+	ON_BN_CLICKED(IDC_BTN_UNLOCK, &CWatchDialog::OnBnClickedBtnUnlock)
+	ON_BN_CLICKED(IDC_BTN_LOCK, &CWatchDialog::OnBnClickedBtnLock)
 END_MESSAGE_MAP()
 
 
@@ -83,10 +85,15 @@ CPoint CWatchDialog::UserPoint2RemoteScreenPoint(CPoint& point, bool isScreen)
 	CRect clientRect;
 	if (isScreen) ScreenToClient(&point);
 	TRACE("x = %d y = %d\r\n", point.x, point.y);
-	m_picture.GetWindowRect(clientRect);
-	TRACE("clientRect.Width= %d, clientRect.Height=%d\r\n", clientRect.Width(), clientRect.Height());
-	TRACE("m_nObjWidth = %d, m_nObjHeight = %d\r\n", m_nObjWidth, m_nObjHeight);
 
+	m_picture.GetWindowRect(clientRect);
+	TRACE(_T("m_picture HWND: %p, rect: %d,%d,%d,%d, width: %d, height: %d\r\n"),
+			m_picture.m_hWnd, clientRect.left, clientRect.top, clientRect.right, clientRect.bottom,
+			clientRect.Width(), clientRect.Height());
+	TRACE("m_nObjWidth = %d, m_nObjHeight = %d\r\n", m_nObjWidth, m_nObjHeight);
+	ScreenToClient(&clientRect);
+	point.x -= clientRect.left;
+	point.y -= clientRect.top;
     //本地坐标到远程坐标
     return CPoint(point.x * m_nObjWidth/ clientRect.Width(), point.y * m_nObjHeight / clientRect.Height());
 	
@@ -277,3 +284,17 @@ void CWatchDialog::OnOK()
 
 	//CDialogEx::OnOK();
 }
+
+void CWatchDialog::OnBnClickedBtnLock()
+{
+	CRemoteClientDlg* pParent = (CRemoteClientDlg*)GetParent(); //获取主对话框指针
+	pParent->SendMessage(WM_SEND_PACKET, 7 << 1 | 1);
+}
+
+
+void CWatchDialog::OnBnClickedBtnUnlock()
+{
+	CRemoteClientDlg* pParent = (CRemoteClientDlg*)GetParent(); //获取主对话框指针
+	pParent->SendMessage(WM_SEND_PACKET, 8 << 1 | 1);
+}
+

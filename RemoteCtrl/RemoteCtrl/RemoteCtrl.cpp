@@ -312,19 +312,29 @@ unsigned _stdcall threadLockDlg(void* arg) {
     rect.bottom = (LONG)rect.bottom*1.1;
     TRACE("right = %d bottom = %d\r\n", rect.right, rect.bottom);
     dlg.MoveWindow(rect);//将对话框作用于全屏
+    CWnd* pText = dlg.GetDlgItem(IDC_STATIC);
+    if (pText) {
+        CRect rtText;
+        pText->GetWindowRect(rtText);
+        int nWidth = rtText.Width() ; //获取文本框的宽度
+        int x = (rect.right - nWidth) / 2;
+        int nHeight = rtText.Height();
+        int y = (rect.bottom - nHeight) / 2;
+        pText->MoveWindow(x, y, rtText.Width(), rtText.Height());
+    }
     //窗口置顶
-    //dlg.SetWindowPos(&dlg.wndTopMost, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE); //不改变大小和移动 置顶
+    dlg.SetWindowPos(&dlg.wndTopMost, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE); //不改变大小和移动 置顶
     //限制鼠标功能
     ShowCursor(false);
     //隐藏任务栏
     ::ShowWindow(::FindWindow(_T("Shell_TrayWnd"), NULL), SW_HIDE);
     //限制鼠标活动范围
-    //dlg.GetWindowRect(rect);
+    dlg.GetWindowRect(rect);
     rect.left = 0;
     rect.top = 0;
     rect.right = 1;
     rect.bottom = 1;
-    ClipCursor(rect);//限制鼠标活动范围 鼠标的范围在左上角
+    ClipCursor(rect);//限制鼠标活动范围 鼠标的范围在左上角 
     MSG msg;
     //消息循环
     while (GetMessage(&msg, NULL, 0, 0)) { //依赖于线程，只能接收该进程的消息，消息泵
@@ -337,9 +347,11 @@ unsigned _stdcall threadLockDlg(void* arg) {
             }
         }
     }
-   
+    //恢复鼠标范围限制
+    ClipCursor(NULL);
+    //恢复鼠标
     ShowCursor(true);
-    //显示任务栏
+    //恢复任务栏
     ::ShowWindow(::FindWindow(_T("Shell_TrayWnd"), NULL), SW_SHOW);
     dlg.DestroyWindow();
     _endthreadex(0);
@@ -364,7 +376,7 @@ int UnlockMachine() {
    // ::SendMessage(dlg.m_hWnd, WM_KEYDOWN, 0x1b, 00010001);
     TRACE("now threadid = %d\r\n", threadid);
     PostThreadMessage(threadid, WM_KEYDOWN, 0x1b, 00010001);
-    CPacket pack(7, NULL, 0);
+    CPacket pack(8, NULL, 0);
     CServerSocket::getInstance()->Send(pack);
     return 0;
 }
@@ -411,7 +423,7 @@ int ExcuteCommand(int nCmd) {
     case 7://锁机
         ret = LockMachine();
         break;
-    case 8:
+    case 8: //解锁
         ret = UnlockMachine();
         break;
     case 9:
