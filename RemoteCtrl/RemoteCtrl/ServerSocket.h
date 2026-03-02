@@ -1,6 +1,7 @@
 #pragma once
 #include"pch.h"
 #include "framework.h"
+#include "Command.h"
 
 #pragma pack(push)
 #pragma pack(1)
