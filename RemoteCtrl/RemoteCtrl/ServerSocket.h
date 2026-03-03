@@ -76,40 +76,6 @@ public:
 
 	}
 
-
-
-	bool Send(const char* pData, size_t nSize)
-	{
-		if (m_client == -1) return false;
-		return send(m_client, pData, nSize, 0) > 0;
-	}
-	bool Send(CPacket& pack) {
-		if (m_client == -1) return false;
-		return send(m_client, pack.Data(), pack.Size(), 0) > 0;
-	}
-	bool GetFilePath(std::string& strPath) { //获取文件列表
-		if (((m_packet.sCmd >= 2 && m_packet.sCmd <= 4)) || m_packet.sCmd == 9) {
-			strPath = m_packet.strData;
-			return true;
-		}
-		return false;
-	}
-	bool GetMouseEvent(MOUSEEV& mouse) {
-		if (m_packet.sCmd == 5) {
-			memcpy(&mouse, m_packet.strData.c_str(), sizeof(MOUSEEV));
-			return true;
-		}
-		return false;
-	}
-	CPacket& GetPacket() {
-		return m_packet;
-	}
-	void CloseClient() {
-		if (m_client != INVALID_SOCKET) {
-			closesocket(m_client);
-			m_client = INVALID_SOCKET;
-		}
-	}
 protected:
 
 	bool InitSocket(short port = 9527)
@@ -177,6 +143,24 @@ protected:
 		}
 		delete[]buffer;
 		return -1;
+	}
+
+	bool Send(const char* pData, size_t nSize)
+	{
+		if (m_client == -1) return false;
+		return send(m_client, pData, nSize, 0) > 0;
+	}
+
+	bool Send(CPacket& pack) {
+		if (m_client == -1) return false;
+		return send(m_client, pack.Data(), pack.Size(), 0) > 0;
+	}
+
+	void CloseClient() {
+		if (m_client != INVALID_SOCKET) {
+			closesocket(m_client);
+			m_client = INVALID_SOCKET;
+		}
 	}
 private:
 	SOCKET_CALLBACK m_callback;

@@ -119,7 +119,10 @@ protected:
 			fclose(pFile);
 
 		}
-		lstPacket.push_back(CPacket(4, nullptr, 0));
+		else {
+			lstPacket.push_back(CPacket(4, nullptr, 0));
+		}
+
 		return 0;
 	}
 	int MouseEvent(std::list<CPacket>& lstPacket, CPacket& inPacket) {
