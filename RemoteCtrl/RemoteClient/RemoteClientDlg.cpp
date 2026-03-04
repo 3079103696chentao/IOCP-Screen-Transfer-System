@@ -2,6 +2,10 @@
 // RemoteClientDlg.cpp: 实现文件
 //
 
+//MVC设计模式
+//V:view视图界面 按钮、图片  数据的生命周期长于VIEW 要实现数据和视图的解绑 
+//C：controller 控制层         将功能放在控制层，将功能和视图解绑，用于联系数据层和界面
+//M:model:模型层/数据层 存储数据
 #include "pch.h"
 #include "framework.h"
 #include "RemoteClient.h"
