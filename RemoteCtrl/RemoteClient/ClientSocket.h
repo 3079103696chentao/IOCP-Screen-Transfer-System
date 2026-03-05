@@ -92,10 +92,10 @@ public:
 		std::swap(pack.strData, strData);
 		std::swap(pack.sSum, sSum);
 	}
-	int Size() {//包数据的大小
+	int Size() const{//包数据的大小
 		return nLength + 6;
 	}
-	const char* Data() {
+	const char* Data(std::string strOut) const {
 		strOut.resize(nLength + 6);
 		BYTE* pData = (BYTE*)strOut.c_str();
 		*(WORD*)pData = sHead; pData += 2;
@@ -106,12 +106,13 @@ public:
 		return strOut.c_str();
 	}
 public:
+	
 	WORD sHead;//固定位FE FF
 	DWORD nLength;//包长度（从控制命令开始，到和校验结束）
 	WORD sCmd;//控制命令
 	std::string strData;//包数据
 	WORD sSum;//和校验
-	std::string strOut; //整个包的数据
+	//std::string strOut; //整个包的数据
 };
 #pragma pack(pop)
 typedef struct MouseEvent {
@@ -179,7 +180,7 @@ public:
 		return m_instance;
 	}
 
-	bool InitSocket(int nIP, int nPort)
+	bool InitSocket()
 	{
 		if (m_socket != INVALID_SOCKET) CloseSocket();
 
@@ -191,8 +192,8 @@ public:
 		//TRACE("addr %08X nIP %08X\r\n", inet_addr("127.0.0.1"), nIP);//\r是回车，将光标移动到当前行的开头
 		//\n换行，将光标移动到下一行
 		//serv_adr.sin_addr.s_addr = inet_addr("127.0.0.1");
-		serv_adr.sin_addr.s_addr = htonl(nIP);
-		serv_adr.sin_port = htons(nPort);
+		serv_adr.sin_addr.s_addr = htonl(m_nIP);
+		serv_adr.sin_port = htons(m_nPort);
 		if (serv_adr.sin_addr.s_addr == INADDR_NONE) {
 			AfxMessageBox(_T("指定的ip地址，不存在！"));
 			return false;
@@ -239,10 +240,11 @@ public:
 		if (m_socket == -1) return false;
 		return send(m_socket, pData, nSize, 0) > 0;
 	}
-	bool Send(CPacket& pack) {
+	bool Send(const CPacket& pack) {
 		TRACE("m_socket = %d\r\n", m_socket);
 		if (m_socket == -1) return false;
-		return send(m_socket, pack.Data(), pack.Size(), 0) > 0;
+		std::string strOut;
+		return send(m_socket, pack.Data(strOut), pack.Size(), 0) > 0;
 	}
 	bool GetFilePath(std::string& strPath) { //获取文件列表
 		if (m_packet.sCmd >= 2 && m_packet.sCmd <= 4) {
@@ -266,7 +268,13 @@ public:
 		closesocket(m_socket);
 		m_socket = INVALID_SOCKET;
 	}
+	void UpdateAddress(int nIP, int nPort) {
+		m_nIP = nIP;
+		m_nPort = nPort;
+	}
 private:
+	int m_nIP;//地址
+	int m_nPort;//端口
 	std::vector<char>m_buffer;
 	SOCKET m_socket;
 	CPacket m_packet;
@@ -275,7 +283,8 @@ private:
 	//拷贝构造函数
 	CClientSocket(const CClientSocket& ss) = delete;
 	//构造函数
-	CClientSocket() {
+	CClientSocket():m_nIP(INADDR_ANY),m_nPort(0)
+	{
 		m_socket = INVALID_SOCKET;
 
 		if (InitSockEnv() == false)
