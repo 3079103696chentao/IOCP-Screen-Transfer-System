@@ -95,7 +95,7 @@ public:
 	int Size() const{//包数据的大小
 		return nLength + 6;
 	}
-	const char* Data(std::string strOut) const {
+	const char* Data(std::string& strOut) const {
 		strOut.resize(nLength + 6);
 		BYTE* pData = (BYTE*)strOut.c_str();
 		*(WORD*)pData = sHead; pData += 2;
@@ -222,7 +222,7 @@ public:
 			if (len <= 0 && index <=0) {
 				return -1;
 			}
-			//Dump((BYTE*)buffer, len);
+			Dump((BYTE*)buffer, len);
 			index += len;
 			len = index; //等于buffer中数据的大小
 			m_packet = CPacket((BYTE*)buffer, len);

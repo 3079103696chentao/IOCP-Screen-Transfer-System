@@ -66,12 +66,67 @@ void CClientController::UpdateAddress(int nIP, int nPort) {
 	 CClientSocket::getInstance()->UpdateAddress(nIP, nPort);
 }
 
+int CClientController::SendCommandPacket(int nCmd, bool bAutoClose, BYTE* pData, size_t nLength)
+{
+	CClientSocket* pClient = CClientSocket::getInstance();
+
+	if (pClient->InitSocket() == false) return false;
+
+	pClient->Send(CPacket(nCmd, pData, nLength));
+
+	int cmd = DealCommand();
+	TRACE("ack:%d\r\n", cmd);
+
+	if (bAutoClose) {
+		CloseSocket();
+	}
+	return cmd;
+}
+
+int CClientController::GetImage(CImage& image)
+{
+	//更新数据到缓存
+	CClientSocket* pClient = CClientSocket::getInstance();
+
+	return CEdoyunTool::Bytes2Image(image, pClient->GetPacket().strData);
+}
+
+CImage& CClientController::GetFullImage()
+{
+	return m_remoteDlg.GetImage();
+}
+
+int CClientController::DownFile(CString strPath)
+{
+	CFileDialog dlg(FALSE, NULL,
+		strPath,
+		OFN_OVERWRITEPROMPT | OFN_HIDEREADONLY,
+		NULL, &m_remoteDlg);
+
+	if (dlg.DoModal() == IDOK) {
+		m_strRemote = strPath;
+		m_strLocal = dlg.GetPathName();
+		m_hThreadDownload = (HANDLE)_beginthread(&CClientController::threadDownloadFileEntry, 0, this);
+		if (WaitForSingleObject(m_hThreadDownload, 0) != WAIT_TIMEOUT) {
+			return -1;
+		}
+		m_remoteDlg.BeginWaitCursor();
+		m_statusDlg.m_info.SetWindowText(_T("命令正在执行中！"));
+		m_statusDlg.ShowWindow(SW_SHOW);
+		m_statusDlg.CenterWindow(&m_remoteDlg);
+		m_statusDlg.SetActiveWindow();//激活与 m_statusDlg 对象关联的对话框窗口
+		//调用后，该窗口将被激活并成为当前活动窗口，能够接收用户的键盘输入
+	}
+
+	return 0;
+}
+
 void CClientController::StartWatchScreen(){
 	m_bIsClosed = false;
-	CWatchDialog dlg(&m_remoteDlg);
+	//m_watchDlg.SetParent(&m_watchDlg);
 	m_hThreadWatch = (HANDLE)_beginthread(
 		&CClientController::threadWatchScreenEntry, 0, this);
-	dlg.DoModal();
+	m_watchDlg.DoModal();
 	m_bIsClosed = true;
 	WaitForSingleObject(m_hThreadWatch, 500);
 }
@@ -79,12 +134,12 @@ void CClientController::StartWatchScreen(){
 void CClientController::threadWatchScreen(){
 	Sleep(50);
 	while (!m_bIsClosed) {
-		if (m_remoteDlg.isFull() == false) {
+		if (m_watchDlg.isFull() == false) {
 			int ret = SendCommandPacket(6);
 			if (ret == 6) {
 
 				if (GetImage(m_remoteDlg.GetImage()) == 0) {
-					m_remoteDlg.SetImageStatus(true);
+					m_watchDlg.SetImageStatus(true);
 				}
 				else {
 					TRACE("获取图片失败！ret = %d\r\n", ret);

@@ -7,6 +7,7 @@
 #include "WatchDialog.h"
 #include"RemoteClientDlg.h"
 #include"ClientSocket.h"
+#include"ClientController.h"
 
 // CWatchDialog 对话框
 
@@ -104,6 +105,7 @@ BOOL CWatchDialog::OnInitDialog()
 	CDialogEx::OnInitDialog();
 
 	// TODO:  在此添加额外的初始化
+	m_isFull = false;
 	SetTimer(0, 50, NULL);
 
 	return TRUE;  // return TRUE unless you set the focus to a control
@@ -114,25 +116,29 @@ void CWatchDialog::OnTimer(UINT_PTR nIDEvent)
 {
 	// TODO: 在此添加消息处理程序代码和/或调用默认值
 	if (nIDEvent == 0) {
-		CRemoteClientDlg* pParent = (CRemoteClientDlg*)GetParent();
-		if (pParent->isFull()) {
+		CClientController* pController = CClientController::getInstance();
+
+		if (m_isFull) {
 			//DC device context
 			CRect rect; 
 			m_picture.GetWindowRect(rect);
 			/*pParent->GetImage().BitBlt(m_picture.GetDC()->GetSafeHdc()
 				, 0, 0, SRCCOPY);*/
+			CClientController* pController = CClientController::getInstance();
+
+			CImage image = pController->GetFullImage();
 			
 			if (m_nObjWidth ==- 1) {
-				m_nObjWidth = pParent->GetImage().GetWidth();
+				m_nObjWidth = image.GetWidth();
 			}
 			if (m_nObjHeight == -1) {
-				m_nObjHeight = pParent->GetImage().GetHeight();
+				m_nObjHeight = image.GetHeight();
 			}
-			pParent->GetImage().StretchBlt(m_picture.GetDC()->GetSafeHdc()
+			image.StretchBlt(m_picture.GetDC()->GetSafeHdc()
 				, 0, 0, rect.Width(), rect.Height(),SRCCOPY);//缩放
 			m_picture.InvalidateRect(NULL); //标记控件的整个客户区域内容过时，请在合适的时机重新绘制
-			pParent->GetImage().Destroy();
-			pParent->SetImageStatus();
+			image.Destroy();
+			m_isFull = false;
 		}
 	}
 	CDialogEx::OnTimer(nIDEvent);
@@ -148,8 +154,8 @@ void CWatchDialog::OnLButtonDblClk(UINT nFlags, CPoint point)
 		event.nButton = 0; //左键
 		event.nAction = 1; //双击
 		//发送
-		CRemoteClientDlg* pParent = (CRemoteClientDlg*)GetParent(); //获取主对话框指针
-		pParent->SendMessage(WM_SEND_PACKET, 5 << 1 | 1, (WPARAM)&event);
+		CClientController* pController = CClientController::getInstance();
+		pController->SendCommandPacket(5, true, (BYTE*)&event, sizeof(MOUSEEV));
 	}
 
 	CDialogEx::OnLButtonDblClk(nFlags, point);
@@ -169,8 +175,9 @@ void CWatchDialog::OnLButtonDown(UINT nFlags, CPoint point)
 		event.nButton = 0; //左键
 		event.nAction = 2; //按下
 		//发送
-		CRemoteClientDlg* pParent = (CRemoteClientDlg*)GetParent(); //获取主对话框指针
-		pParent->SendMessage(WM_SEND_PACKET, 5 << 1 | 1, (WPARAM)&event);
+		//发送
+		CClientController* pController = CClientController::getInstance();
+		pController->SendCommandPacket(5, true, (BYTE*)&event, sizeof(MOUSEEV));
 	}
 	CDialogEx::OnLButtonDown(nFlags, point);
 }
@@ -185,8 +192,9 @@ void CWatchDialog::OnLButtonUp(UINT nFlags, CPoint point)
 		event.nButton = 0; //左键
 		event.nAction = 3; //放开
 		//发送
-		CRemoteClientDlg* pParent = (CRemoteClientDlg*)GetParent(); //获取主对话框指针
-		pParent->SendMessage(WM_SEND_PACKET, 5 << 1 | 1, (WPARAM)&event);
+		//发送
+		CClientController* pController = CClientController::getInstance();
+		pController->SendCommandPacket(5, true, (BYTE*)&event, sizeof(MOUSEEV));
 	}
 	CDialogEx::OnLButtonUp(nFlags, point);
 }
@@ -201,8 +209,9 @@ void CWatchDialog::OnRButtonDblClk(UINT nFlags, CPoint point)
 		event.nButton = 1; //右键
 		event.nAction = 1; //双击
 		//发送
-		CRemoteClientDlg* pParent = (CRemoteClientDlg*)GetParent(); //获取主对话框指针
-		pParent->SendMessage(WM_SEND_PACKET, 5 << 1 | 1, (WPARAM)&event);
+		//发送
+		CClientController* pController = CClientController::getInstance();
+		pController->SendCommandPacket(5, true, (BYTE*)&event, sizeof(MOUSEEV));
 	}
 	CDialogEx::OnRButtonDblClk(nFlags, point);
 }
@@ -217,8 +226,9 @@ void CWatchDialog::OnRButtonDown(UINT nFlags, CPoint point)
 		event.nButton = 1; //右键
 		event.nAction = 2; //按下
 		//发送
-		CRemoteClientDlg* pParent = (CRemoteClientDlg*)GetParent(); //获取主对话框指针
-		pParent->SendMessage(WM_SEND_PACKET, 5 << 1 | 1, (WPARAM)&event);
+		//发送
+		CClientController* pController = CClientController::getInstance();
+		pController->SendCommandPacket(5, true, (BYTE*)&event, sizeof(MOUSEEV));
 	}
 	CDialogEx::OnRButtonDown(nFlags, point);
 }
@@ -233,9 +243,9 @@ void CWatchDialog::OnRButtonUp(UINT nFlags, CPoint point)
 		event.nButton = 1; //右键
 		event.nAction = 3; //放开
 		//发送
-		CRemoteClientDlg* pParent = (CRemoteClientDlg*)GetParent(); //获取主对话框指针
-		//TODO:存在设计隐患，网络通信和对话框有耦合
-		pParent->SendMessage(WM_SEND_PACKET, 5 << 1 | 1, (WPARAM)&event);
+		//发送
+		CClientController* pController = CClientController::getInstance();
+		pController->SendCommandPacket(5, true, (BYTE*)&event, sizeof(MOUSEEV));
 	}
 	CDialogEx::OnRButtonUp(nFlags, point);
 }
@@ -253,8 +263,9 @@ void CWatchDialog::OnMouseMove(UINT nFlags, CPoint point)
 		event.nAction = 0; //没有操作
 		//发送
 		TRACE("鼠标移动 client x = %d, y = %d\r\n", remote.x, remote.y);
-		CRemoteClientDlg* pParent = (CRemoteClientDlg*)GetParent(); //TODO:
-		pParent->SendMessage(WM_SEND_PACKET, 5 << 1 | 1, (WPARAM)&event);
+		//发送
+		CClientController* pController = CClientController::getInstance();
+		pController->SendCommandPacket(5, true, (BYTE*)&event, sizeof(MOUSEEV));
 	}
 	CDialogEx::OnMouseMove(nFlags, point);
 }
@@ -272,8 +283,9 @@ void CWatchDialog::OnStnClickedWatch()
 		event.nButton = 0; //没有按键
 		event.nAction = 0; //没有操作
 		//发送
-		CRemoteClientDlg* pParent = (CRemoteClientDlg*)GetParent(); //获取主对话框指针
-		pParent->SendMessage(WM_SEND_PACKET, 5 << 1 | 1, (WPARAM)&event);
+		//发送
+		CClientController* pController = CClientController::getInstance();
+		pController->SendCommandPacket(5, true, (BYTE*)&event, sizeof(MOUSEEV));
 	}
 
 }
@@ -287,14 +299,16 @@ void CWatchDialog::OnOK()
 
 void CWatchDialog::OnBnClickedBtnLock()
 {
-	CRemoteClientDlg* pParent = (CRemoteClientDlg*)GetParent(); //获取主对话框指针
-	pParent->SendMessage(WM_SEND_PACKET, 7 << 1 | 1);
+	//发送
+	CClientController* pController = CClientController::getInstance();
+	pController->SendCommandPacket(7);
 }
 
 
 void CWatchDialog::OnBnClickedBtnUnlock()
 {
-	CRemoteClientDlg* pParent = (CRemoteClientDlg*)GetParent(); //获取主对话框指针
-	pParent->SendMessage(WM_SEND_PACKET, 8 << 1 | 1);
+	//发送
+	CClientController* pController = CClientController::getInstance();
+	pController->SendCommandPacket(8);
 }
 
