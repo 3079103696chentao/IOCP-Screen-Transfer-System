@@ -19,7 +19,7 @@ public:
 public:
 	int m_nObjWidth;
 	int m_nObjHeight;
-
+	CImage m_image;//图片缓存
 protected:
 	bool m_isFull;//缓存是否有数据，true表示有缓存数据 false表示没有缓存数据
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 支持
@@ -28,6 +28,11 @@ protected:
 	DECLARE_MESSAGE_MAP()
 public:
 	/*bool GetRealPoint(CPoint& point);*/
+
+	CImage& GetImage() {
+		return m_image;
+	}
+
 	bool isFull() const {
 		return m_isFull;
 	}

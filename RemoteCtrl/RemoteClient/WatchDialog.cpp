@@ -46,43 +46,11 @@ BEGIN_MESSAGE_MAP(CWatchDialog, CDialogEx)
 END_MESSAGE_MAP()
 
 
-// CWatchDialog 消息处理程序
 
-//bool CWatchDialog::GetRealPoint(CPoint& point)
-//{
-//	CRect  rectPicture;
-//	m_picture.GetWindowRect(&rectPicture); //获取图片控件在屏幕上的位置
-//	ScreenToClient(&rectPicture); //转换为相对于对话框的坐标
-//	if (rectPicture.PtInRect(point)) {
-//		//减去图片控件在左上角的偏移，得到相对于图片本身的（0,0）
-//		point.x = point.x - rectPicture.left;
-//		point.y = point.y - rectPicture.top;
-//		return true;
-//	}
-//	return false;
-//}
 
 CPoint CWatchDialog::UserPoint2RemoteScreenPoint(CPoint& point, bool isScreen)
 {
-	//CRect clientRect;
-	//if (m_picture.m_hWnd) {
-	//	
-	//	m_picture.GetWindowRect(&clientRect);
-	//	TRACE(_T("m_picture HWND: %p, rect: %d,%d,%d,%d, width: %d, height: %d\r\n"),
-	//		m_picture.m_hWnd, clientRect.left, clientRect.top, clientRect.right, clientRect.bottom,
-	//		clientRect.Width(), clientRect.Height());
-	//}
-	//else {
-	//	TRACE(_T("m_picture not subclassed yet!\n"));
-	//}
-	//TRACE(_T("client in picture: x= %d, y=%d \r\n"), point.x, point.y);
- //   if (isScreen) ScreenToClient(&point);//获取在截取的屏幕上点击的位置坐标,本地坐标,把屏幕坐标换算成某个窗口客户区坐标
-	//TRACE(_T("after isScreen client in picture: x= %d, y=%d \r\n"), point.x, point.y);
-	//
-	//TRACE(_T("m_picture.m_hWnd: %d, \r\n"), m_picture.m_hWnd);
-	//TRACE(_T("m_nObjWidth: %d, m_nObjHeight: %d\r\n"), m_nObjWidth, m_nObjHeight);
-	//m_picture.GetWindowRect(&clientRect);
-	//TRACE(_T("clientRect.Width: %d, clientRect.Height: %d\r\n"), clientRect.Width(), clientRect.Height());
+	
 	CRect clientRect;
 	if (isScreen) ScreenToClient(&point);
 	TRACE("x = %d y = %d\r\n", point.x, point.y);
@@ -114,7 +82,8 @@ BOOL CWatchDialog::OnInitDialog()
 
 void CWatchDialog::OnTimer(UINT_PTR nIDEvent)
 {
-	// TODO: 在此添加消息处理程序代码和/或调用默认值
+	Sleep(50);
+	//当图片缓存更新的时候，将图片显示出来，然后更改图片缓存状态
 	if (nIDEvent == 0) {
 		CClientController* pController = CClientController::getInstance();
 
@@ -126,19 +95,15 @@ void CWatchDialog::OnTimer(UINT_PTR nIDEvent)
 				, 0, 0, SRCCOPY);*/
 			CClientController* pController = CClientController::getInstance();
 
-			CImage image = pController->GetFullImage();
-			
-			if (m_nObjWidth ==- 1) {
-				m_nObjWidth = image.GetWidth();
-			}
-			if (m_nObjHeight == -1) {
-				m_nObjHeight = image.GetHeight();
-			}
-			image.StretchBlt(m_picture.GetDC()->GetSafeHdc()
+			m_nObjWidth = m_image.GetWidth();
+			m_nObjHeight = m_image.GetHeight();
+
+			m_image.StretchBlt(m_picture.GetDC()->GetSafeHdc()
 				, 0, 0, rect.Width(), rect.Height(),SRCCOPY);//缩放
 			m_picture.InvalidateRect(NULL); //标记控件的整个客户区域内容过时，请在合适的时机重新绘制
-			image.Destroy();
+			m_image.Destroy();
 			m_isFull = false;
+			TRACE("更新图片完成 %d %d\r\n", m_nObjWidth, m_nObjHeight);
 		}
 	}
 	CDialogEx::OnTimer(nIDEvent);
@@ -155,7 +120,7 @@ void CWatchDialog::OnLButtonDblClk(UINT nFlags, CPoint point)
 		event.nAction = 1; //双击
 		//发送
 		CClientController* pController = CClientController::getInstance();
-		pController->SendCommandPacket(5, true, (BYTE*)&event, sizeof(MOUSEEV));
+		pController->SendCommandPacket(GetSafeHwnd(), 5, true, (BYTE*)&event, sizeof(MOUSEEV));
 	}
 
 	CDialogEx::OnLButtonDblClk(nFlags, point);
@@ -177,7 +142,7 @@ void CWatchDialog::OnLButtonDown(UINT nFlags, CPoint point)
 		//发送
 		//发送
 		CClientController* pController = CClientController::getInstance();
-		pController->SendCommandPacket(5, true, (BYTE*)&event, sizeof(MOUSEEV));
+		pController->SendCommandPacket(GetSafeHwnd(), 5, true, (BYTE*)&event, sizeof(MOUSEEV));
 	}
 	CDialogEx::OnLButtonDown(nFlags, point);
 }
@@ -194,7 +159,7 @@ void CWatchDialog::OnLButtonUp(UINT nFlags, CPoint point)
 		//发送
 		//发送
 		CClientController* pController = CClientController::getInstance();
-		pController->SendCommandPacket(5, true, (BYTE*)&event, sizeof(MOUSEEV));
+		pController->SendCommandPacket(GetSafeHwnd(), 5, true, (BYTE*)&event, sizeof(MOUSEEV));
 	}
 	CDialogEx::OnLButtonUp(nFlags, point);
 }
@@ -211,7 +176,7 @@ void CWatchDialog::OnRButtonDblClk(UINT nFlags, CPoint point)
 		//发送
 		//发送
 		CClientController* pController = CClientController::getInstance();
-		pController->SendCommandPacket(5, true, (BYTE*)&event, sizeof(MOUSEEV));
+		pController->SendCommandPacket(GetSafeHwnd(), 5, true, (BYTE*)&event, sizeof(MOUSEEV));
 	}
 	CDialogEx::OnRButtonDblClk(nFlags, point);
 }
@@ -228,7 +193,7 @@ void CWatchDialog::OnRButtonDown(UINT nFlags, CPoint point)
 		//发送
 		//发送
 		CClientController* pController = CClientController::getInstance();
-		pController->SendCommandPacket(5, true, (BYTE*)&event, sizeof(MOUSEEV));
+		pController->SendCommandPacket(GetSafeHwnd(), 5, true, (BYTE*)&event, sizeof(MOUSEEV));
 	}
 	CDialogEx::OnRButtonDown(nFlags, point);
 }
@@ -245,7 +210,7 @@ void CWatchDialog::OnRButtonUp(UINT nFlags, CPoint point)
 		//发送
 		//发送
 		CClientController* pController = CClientController::getInstance();
-		pController->SendCommandPacket(5, true, (BYTE*)&event, sizeof(MOUSEEV));
+		pController->SendCommandPacket(GetSafeHwnd(), 5, true, (BYTE*)&event, sizeof(MOUSEEV));
 	}
 	CDialogEx::OnRButtonUp(nFlags, point);
 }
@@ -265,7 +230,7 @@ void CWatchDialog::OnMouseMove(UINT nFlags, CPoint point)
 		TRACE("鼠标移动 client x = %d, y = %d\r\n", remote.x, remote.y);
 		//发送
 		CClientController* pController = CClientController::getInstance();
-		pController->SendCommandPacket(5, true, (BYTE*)&event, sizeof(MOUSEEV));
+		pController->SendCommandPacket(GetSafeHwnd(), 5, true, (BYTE*)&event, sizeof(MOUSEEV));
 	}
 	CDialogEx::OnMouseMove(nFlags, point);
 }
@@ -283,9 +248,8 @@ void CWatchDialog::OnStnClickedWatch()
 		event.nButton = 0; //没有按键
 		event.nAction = 0; //没有操作
 		//发送
-		//发送
 		CClientController* pController = CClientController::getInstance();
-		pController->SendCommandPacket(5, true, (BYTE*)&event, sizeof(MOUSEEV));
+		pController->SendCommandPacket(GetSafeHwnd(), 5, true, (BYTE*)&event, sizeof(MOUSEEV));
 	}
 
 }
@@ -301,7 +265,7 @@ void CWatchDialog::OnBnClickedBtnLock()
 {
 	//发送
 	CClientController* pController = CClientController::getInstance();
-	pController->SendCommandPacket(7);
+	pController->SendCommandPacket(GetSafeHwnd(), 7);
 }
 
 
@@ -309,6 +273,6 @@ void CWatchDialog::OnBnClickedBtnUnlock()
 {
 	//发送
 	CClientController* pController = CClientController::getInstance();
-	pController->SendCommandPacket(8);
+	pController->SendCommandPacket(GetSafeHwnd(), 8);
 }
 
