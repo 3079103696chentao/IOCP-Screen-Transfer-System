@@ -27,19 +27,19 @@ class CAboutDlg : public CDialogEx
 public:
 	CAboutDlg();
 
-// 对话框数据
+	// 对话框数据
 #ifdef AFX_DESIGN_TIME
 	enum { IDD = IDD_ABOUTBOX };
 #endif
 
-	protected:
+protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 支持
 
-// 实现
+	// 实现
 protected:
 	DECLARE_MESSAGE_MAP()
 public:
-	
+
 };
 
 CAboutDlg::CAboutDlg() : CDialogEx(IDD_ABOUTBOX)
@@ -52,7 +52,7 @@ void CAboutDlg::DoDataExchange(CDataExchange* pDX)
 }
 
 BEGIN_MESSAGE_MAP(CAboutDlg, CDialogEx)
-	
+
 END_MESSAGE_MAP()
 
 
@@ -91,7 +91,7 @@ BEGIN_MESSAGE_MAP(CRemoteClientDlg, CDialogEx)
 	ON_COMMAND(ID_DOWNlOAD_FILE, &CRemoteClientDlg::OnDownloadFile)
 	ON_COMMAND(ID_DELETE_FILE, &CRemoteClientDlg::OnDeleteFile)
 	ON_COMMAND(ID_RUN_FILE, &CRemoteClientDlg::OnRunFile)
-	
+
 	ON_BN_CLICKED(IDC_BTN_START_WATCH, &CRemoteClientDlg::OnBnClickedBtnStartWatch)
 	ON_WM_TIMER()
 	ON_NOTIFY(IPN_FIELDCHANGED, IDC_IPADDRESS_SERV, &CRemoteClientDlg::OnIpnFieldchangedIpaddressServ)
@@ -136,11 +136,11 @@ BOOL CRemoteClientDlg::OnInitDialog()
 	UpdateData();//将控件当前值保存到对应的成员变量
 
 	m_hTreeSelected = NULL;
-    //m_server_address =0xAC153D20;//远程电脑
-	m_server_address = 0x7F000001;//本地
+	m_server_address = 0xAC15418D;//远程电脑
+	//m_server_address = 0x7F000001;//本地
 
 	m_nPort = _T("9527");
-	
+
 
 	UpdateData(false);//将成员变量的值显示到对应的控件
 
@@ -149,7 +149,7 @@ BOOL CRemoteClientDlg::OnInitDialog()
 
 	m_dlgStatus.Create(IDD_DLG_STATUS, this);
 	m_dlgStatus.ShowWindow(SW_HIDE);
-	
+
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
 
@@ -214,18 +214,18 @@ void CRemoteClientDlg::OnBnClickedBtnFileinfo()
 {
 	// TODO: 在此添加控件通知处理程序代码
 	CClientController* pController = CClientController::getInstance();
-	
+
 	int ret = pController->SendCommandPacket(GetSafeHwnd(), 1, true, nullptr, 0);
 	if (ret == -1) {
 		AfxMessageBox(_T("命令处理失败!!!"));
 		return;
 	}
-	
+
 }
 
 
 
-void CRemoteClientDlg::LoadFileCurrent(){
+void CRemoteClientDlg::LoadFileCurrent() {
 	HTREEITEM hTree = m_Tree.GetSelectedItem();
 	CString strPath = GetPath(hTree);
 	m_List.DeleteAllItems();
@@ -235,7 +235,7 @@ void CRemoteClientDlg::LoadFileCurrent(){
 	TRACE("loadFileCurrent nCmd = %d", nCmd);
 	if (nCmd != 2) return;
 	TRACE("loadFileCurrent nCmd = %d, lstpacks.size() = %d", nCmd, lstpacks.size());
-	
+
 	while (lstpacks.size()) {
 		PFILEINFO pInfo = (PFILEINFO)lstpacks.front().strData.c_str();
 		lstpacks.pop_front();
@@ -255,7 +255,7 @@ void CRemoteClientDlg::LoadFileCurrent(){
 	//pClient->CloseSocket();
 }
 
-void CRemoteClientDlg::LoadFileInfo(){
+void CRemoteClientDlg::LoadFileInfo() {
 
 	CPoint ptMouse;
 	GetCursorPos(&ptMouse);
@@ -274,11 +274,11 @@ void CRemoteClientDlg::LoadFileInfo(){
 	m_List.DeleteAllItems();
 	CString strPath = GetPath(m_hTreeSelected);
 	int nCmd = CClientController::getInstance()->SendCommandPacket(GetSafeHwnd(), 2, false, (BYTE*)(LPCTSTR)strPath, strPath.GetLength());
-	PFILEINFO pInfo = (PFILEINFO)CClientSocket::getInstance()->GetPacket().strData.c_str() ;
+	PFILEINFO pInfo = (PFILEINFO)CClientSocket::getInstance()->GetPacket().strData.c_str();
 	CClientSocket* pClient = CClientSocket::getInstance();
 	int Count = 0;
 	while (pInfo->HaNext) {
-	//	TRACE("[%s] isdir %d\r\n", pInfo->szFileName, pInfo->isDirectory);
+		//	TRACE("[%s] isdir %d\r\n", pInfo->szFileName, pInfo->isDirectory);
 		if (pInfo->isDirectory) {
 			if ((CString(pInfo->szFileName) == ".") || (CString(pInfo->szFileName) == "..")) {
 
@@ -295,7 +295,7 @@ void CRemoteClientDlg::LoadFileInfo(){
 		else {
 			m_List.InsertItem(0, pInfo->szFileName);
 		}
-		
+
 		Count++;
 		int cmd = pClient->DealCommand();
 		//TRACE("ack:%d\r\n", cmd);
@@ -310,8 +310,8 @@ void CRemoteClientDlg::LoadFileInfo(){
 CString CRemoteClientDlg::GetPath(HTREEITEM hTree) {
 	CString strRet, strTmp;
 	do {
-		strTmp = m_Tree.GetItemText(hTree);	
-		strRet =  strTmp + "\\" + strRet;		
+		strTmp = m_Tree.GetItemText(hTree);
+		strRet = strTmp + "\\" + strRet;
 		hTree = m_Tree.GetParentItem(hTree);
 	} while (hTree != NULL);
 
@@ -326,14 +326,14 @@ CString CRemoteClientDlg::GetPath(HTREEITEM hTree) {
 //	} while (hTree != NULL);//如果父节点不为空，则循环继续
 //	return strRet;
 //}
-void CRemoteClientDlg::DeleteTreeChildrenItem(HTREEITEM hTree){
+void CRemoteClientDlg::DeleteTreeChildrenItem(HTREEITEM hTree) {
 
 	HTREEITEM hSub = NULL;
 	do {
 		hSub = m_Tree.GetChildItem(hTree);
 		if (hSub != NULL) m_Tree.DeleteItem(hSub);
 	} while (hSub != NULL);
-	
+
 }
 
 void CRemoteClientDlg::OnNMDblclkTreeDir(NMHDR* pNMHDR, LRESULT* pResult)
@@ -363,7 +363,7 @@ void CRemoteClientDlg::OnNMRClickListFile(NMHDR* pNMHDR, LRESULT* pResult)
 	if (ListSelected < 0) return;
 	CMenu menu;
 	menu.LoadMenu(IDR_MENU_RCLICK);
-	CMenu* pPupup= menu.GetSubMenu(0);
+	CMenu* pPupup = menu.GetSubMenu(0);
 	if (pPupup != NULL) {
 		pPupup->TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, ptMouse.x, ptMouse.y, this);
 	}
@@ -380,7 +380,7 @@ void CRemoteClientDlg::OnDownloadFile()
 		MessageBox(_T("下载失败！"));
 		TRACE("下载失败 ret = %d\r\n", ret);
 	}
-	
+
 }
 
 void CRemoteClientDlg::OnDeleteFile()
@@ -445,9 +445,15 @@ void CRemoteClientDlg::OnEnChangeEditPort()
 	pController->UpdateAddress(m_server_address, atoi((LPCTSTR)m_nPort));
 }
 
-LRESULT CRemoteClientDlg::OnSendPackAck(WPARAM wParam, LPARAM lParam){
+LRESULT CRemoteClientDlg::OnSendPackAck(WPARAM wParam, LPARAM lParam) {
+	if (lParam < 0) {
+		//错误处理
+	}
+	else if (lParam == 1) {
 
-	if (lParam == 0) {
+		//对方关闭了套接字
+	}
+	else {
 		CPacket* pPacket = (CPacket*)wParam;
 		if (pPacket != NULL) {
 			CPacket& head = *pPacket;
@@ -473,24 +479,22 @@ LRESULT CRemoteClientDlg::OnSendPackAck(WPARAM wParam, LPARAM lParam){
 					m_Tree.InsertItem(NULL, hTemp, TVI_LAST);
 					dr.clear();
 				}
-
 				break;
 			}
 			case 2://查看指定目录下的文件
 			{
-				
-				PFILEINFO pInfo= (PFILEINFO)head.strData.c_str();
+				PFILEINFO pInfo = (PFILEINFO)head.strData.c_str();
 				if (pInfo->HaNext == FALSE) break;
 				TRACE("[%s] isdir %d\r\n", pInfo->szFileName, pInfo->isDirectory);
 				if (pInfo->isDirectory) {
 					if ((CString(pInfo->szFileName) == ".") || (CString(pInfo->szFileName) == "..")) {
-                            break;
+						break;
 					}
 					HTREEITEM hTemp = m_Tree.InsertItem(pInfo->szFileName, m_hTreeSelected, TVI_LAST);
 					m_Tree.InsertItem("", hTemp, TVI_LAST);
 				}
 				else {
-						m_List.InsertItem(0, pInfo->szFileName);
+					m_List.InsertItem(0, pInfo->szFileName);
 				}
 				break;
 			}
@@ -516,11 +520,9 @@ LRESULT CRemoteClientDlg::OnSendPackAck(WPARAM wParam, LPARAM lParam){
 				else {
 					FILE* pFile = (FILE*)lParam;
 					while (index < length) {
-
 						fwrite(head.strData.c_str(), 1, head.strData.size(), pFile);
 						index += head.strData.size();
 					}
-					
 				}
 				break;
 			}
@@ -534,13 +536,8 @@ LRESULT CRemoteClientDlg::OnSendPackAck(WPARAM wParam, LPARAM lParam){
 				TRACE(" unnown data received cmd %d ！\r\n", head.sCmd);
 				break;
 			}
+
 		}
-	}
-	else if (lParam < 0) {
-		//TODO:错误处理
-	}
-	else if (lParam > 0) {
-		//对方关闭了套接字
 	}
 	return 0;
 }

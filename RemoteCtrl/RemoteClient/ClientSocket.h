@@ -92,15 +92,18 @@ private:
 	typedef void(CClientSocket::* MSGFUNC)(UINT nMsg,
 		WPARAM wParam, LPARAM lParam);
 	std::map<UINT, MSGFUNC>m_mapFunc;
+	int m_nIP;//地址
+	int m_nPort;//端口
+	SOCKET m_socket;
 	UINT m_nThreadID;
 	HANDLE m_hThread;
+	HANDLE m_hEventInvoke;
 	std::mutex m_lock;
 	std::list<CPacket>m_lstSend;
 	std::map<HANDLE, std::list<CPacket>>m_mapAck;
-	int m_nIP;//地址
-	int m_nPort;//端口
+	
 	std::vector<char>m_buffer;
-	SOCKET m_socket;
+	
 	CPacket m_packet;
 	static  CClientSocket* m_instance;
 	

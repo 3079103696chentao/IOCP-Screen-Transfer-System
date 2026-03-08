@@ -72,7 +72,12 @@ bool CClientController::SendCommandPacket(HWND hWnd, int nCmd, bool bAutoClose, 
 
 	CClientSocket* pClient = CClientSocket::getInstance();
 
-	return pClient->SendPacket(hWnd, CPacket(nCmd, pData, nLength), bAutoClose);
+	bool ret =  pClient->SendPacket(hWnd, CPacket(nCmd, pData, nLength), bAutoClose);
+	if (!ret) {
+		Sleep(30);
+		ret = pClient->SendPacket(hWnd, CPacket(nCmd, pData, nLength), bAutoClose);
+	}
+	return ret;
 }
 
 int CClientController::GetImage(CImage& image)

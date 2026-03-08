@@ -5,26 +5,15 @@
 CClientSocket* CClientSocket::m_instance = nullptr;
 CClientSocket* pClient = CClientSocket::getInstance();
 CClientSocket::CHelper CClientSocket::m_helper;
-CClientSocket::CClientSocket():m_nIP(INADDR_ANY), m_nPort(0)
+CClientSocket::CClientSocket():
+	m_nIP(INADDR_ANY), m_nPort(0), m_socket(INVALID_SOCKET),
+	m_nThreadID(ERROR_INVALID_THREAD_ID), m_hThread(INVALID_HANDLE_VALUE)
 {
-	m_nThreadID = ERROR_INVALID_THREAD_ID;
-
-	m_hThread = INVALID_HANDLE_VALUE;
-
-	m_socket = INVALID_SOCKET;
-
-
 	if (InitSockEnv() == false)
 	{
 		MessageBox(NULL, _T("无法初始化套接字环境,请检查网络设置"), _T("初始化错误！"), MB_OK | MB_ICONERROR);
 		exit(0);
 	}
-
-	
-	
-	m_buffer.resize(BUFFER_SIZE);
-
-	memset(m_buffer.data(), 0, BUFFER_SIZE);
 
 	struct {
 		UINT message;
@@ -38,6 +27,22 @@ CClientSocket::CClientSocket():m_nIP(INADDR_ANY), m_nPort(0)
 		m_mapFunc.insert(m_mapFunc.end(),
 			{ funcs[i].message, funcs[i].func });
 	}
+
+	m_hEventInvoke = CreateEvent(NULL, true, FALSE, NULL);
+
+	m_hThread = (HANDLE)_beginthreadex(NULL, 0,
+		&CClientSocket::threadEntry, this, 0, &m_nThreadID);
+	TRACE(" thread Entry begins m_ThreadID = %d\r\n", m_nThreadID);
+
+	if (WaitForSingleObject(m_hEventInvoke, 100) == WAIT_TIMEOUT) {
+		TRACE("网络消息处理线程启动失败了");
+	}
+
+	CloseHandle(m_hEventInvoke);
+
+	m_buffer.resize(BUFFER_SIZE);
+
+	memset(m_buffer.data(), 0, BUFFER_SIZE);
 
 }
 
@@ -122,15 +127,14 @@ bool CClientSocket::Send(const CPacket& pack) {
 }
 //函数内部调用PostThreadMessage()函数来通知线程函数threadFunc()的GetMessage()
 bool CClientSocket::SendPacket(HWND hWnd, const CPacket& pack, bool isAutoClosed) {
-	if (m_hThread == INVALID_HANDLE_VALUE) {
-		m_hThread = (HANDLE)_beginthreadex(NULL, 0,
-			&CClientSocket::threadEntry, this, 0, &m_nThreadID);
-	}
+	
 	UINT nMode = isAutoClosed ? CSM_AUTOCLOSE : 0;
 
 	std::string strOut;
-	return PostThreadMessage(m_nThreadID, WM_SEND_PACK,
+	bool ret =  PostThreadMessage(m_nThreadID, WM_SEND_PACK,
 		(WPARAM)new PACKET_DATA(pack.Data(strOut), pack.Size(), isAutoClosed), (LPARAM)hWnd);
+	TRACE("PostThreadMessage result is %d ,m_nThreadID is %d\r\n", ret, m_nThreadID);
+	return ret;
 }
 
 //bool CClientSocket::SendPacket(const CPacket& pack, std::list<CPacket>& lstPacks) {
@@ -168,29 +172,52 @@ void CClientSocket::SendPack(UINT nMsg, WPARAM wParam, LPARAM lParam)
 		TRACE("网络连接失败\r\n");
 		return;
 	}
+	static size_t index = 0;
+	char* buffer = m_buffer.data();
 	//定义消息数据结构(数据、长度、模式)，回调消息的数据结构（HANDLE MSSAGE）
 	 while(m_socket!=INVALID_SOCKET) {
-		int ret = send(m_socket, (char*)wParam, (int)(lParam), 0);
-		if (ret > 0) {
-			//int length = recv(m_socket, , , , 0);
-			/*if (length > 0) {
+		 if ((PACKET_DATA*)wParam == nullptr) {
+			 TRACE("PACKET_DATA为空\r\n");
+			 break;
+		 }
+        PACKET_DATA packet_data = *(PACKET_DATA*)wParam;
+		delete (PACKET_DATA*)wParam;
 
+		int ret = send(m_socket, packet_data.strData.c_str(),
+			packet_data.strData.size(), 0);
+
+		if (ret > 0) {
+			size_t length = recv(m_socket, buffer+index, BUFFER_SIZE - index, 0);
+			TRACE("recv length = %d, index = %d\r\n", length, index);
+			if (length <= 0 && index <= 0) {
+				CloseSocket();
+				break;
+			}
+			index += length;
+			length = index;
+			CPacket pack((BYTE*)buffer, length);
+			if (length > 0) {
+				HWND hWnd = (HWND)lParam;
+				::SendMessage(hWnd, WM_SEND_PACK_ACK, WPARAM(&pack), LPARAM(10));
+				memmove(buffer, buffer + length, index - length);
+				index -= length;
+				TRACE("Send Message success cmd = %d\r\n", pack.sCmd);
 			}
 			else {
-
-			}*/
-			HWND hWnd = (HWND)lParam;
-			::SendMessage(hWnd, WM_SEND_PACK_ACK, NULL, NULL);
+			 	TRACE("CPacket 解析失败 length =0\r\n");
+				break;
+			}
+			if (packet_data.nMode) {
+				CloseSocket();
+				break;
+			}
 		}
 		else {
+			TRACE("send to serve failed m_socket = %d, ret = %d\r\n", m_socket, ret);
 			CloseSocket();
+			break;
 		}
 	}
-	
-	TRACE("m_sock = %d \r\n", m_socket);
-	if (m_socket == -1) return;
-	
-	return;
 }
 
 int CClientSocket::DealCommand()
@@ -321,12 +348,15 @@ unsigned __stdcall CClientSocket::threadEntry(void* arg) {
 
 void CClientSocket::threadFunc()
 {
+	SetEvent(m_hEventInvoke);
 	MSG msg;
 	while (::GetMessage(&msg, NULL, 0, 0)) {
 		TranslateMessage(&msg);
 		DispatchMessage(&msg);
+		TRACE("Get Message : %08X \r\n", msg.message);
 		auto it = m_mapFunc.find(msg.message);
 		if (it != m_mapFunc.end()) {
+			TRACE("The message is found sunccess\r\n");
 			(this->*it->second)(msg.message, 
 				msg.wParam, msg.lParam);
 		}
