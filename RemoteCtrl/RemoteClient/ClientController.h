@@ -53,10 +53,14 @@ public:
 		int nCmd,
 		bool bAutoClose = true,
 		BYTE* pData = NULL,
-		size_t nLength = 0
+		size_t nLength = 0,
+		WPARAM wParam = NULL
 		);
 	int GetImage(CImage& image);
+	
+	void DwonloadEnd();
 	int DownFile(CString strPath);
+
 
 	void StartWatchScreen();
 protected:

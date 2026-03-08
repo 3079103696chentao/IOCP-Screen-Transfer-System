@@ -43,6 +43,7 @@ BEGIN_MESSAGE_MAP(CWatchDialog, CDialogEx)
 	ON_STN_CLICKED(IDC_WATCH, &CWatchDialog::OnStnClickedWatch)
 	ON_BN_CLICKED(IDC_BTN_UNLOCK, &CWatchDialog::OnBnClickedBtnUnlock)
 	ON_BN_CLICKED(IDC_BTN_LOCK, &CWatchDialog::OnBnClickedBtnLock)
+	ON_MESSAGE(WM_SEND_PACK_ACK, &CWatchDialog::OnSendPackAck)
 END_MESSAGE_MAP()
 
 
@@ -74,7 +75,6 @@ BOOL CWatchDialog::OnInitDialog()
 
 	// TODO:  在此添加额外的初始化
 	m_isFull = false;
-	SetTimer(0, 50, NULL);
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// 异常: OCX 属性页应返回 FALSE
@@ -84,29 +84,52 @@ void CWatchDialog::OnTimer(UINT_PTR nIDEvent)
 {
 	Sleep(50);
 	//当图片缓存更新的时候，将图片显示出来，然后更改图片缓存状态
-	if (nIDEvent == 0) {
-		CClientController* pController = CClientController::getInstance();
+	CDialogEx::OnTimer(nIDEvent);
+}
 
-		if (m_isFull) {
-			//DC device context
-			CRect rect; 
-			m_picture.GetWindowRect(rect);
-			/*pParent->GetImage().BitBlt(m_picture.GetDC()->GetSafeHdc()
-				, 0, 0, SRCCOPY);*/
-			CClientController* pController = CClientController::getInstance();
+LRESULT CWatchDialog::OnSendPackAck(WPARAM wParam, LPARAM lParam)
+{
+	if (lParam < 0) {
+		//错误处理
+	}
+	else if (lParam == 1) {
+		//对方关闭了套接字
+	}
+	else {
+		CPacket* pPacket = (CPacket*)wParam;
+		if (pPacket != NULL) {
+			switch (pPacket->sCmd) {
+			case 6://发送屏幕内容
+			{
+				if (m_isFull) {//感觉有问题，不应该是！m_isFull
+					//DC device context
+					CEdoyunTool::Bytes2Image(m_image, pPacket->strData);
+					CRect rect;
+					m_picture.GetWindowRect(rect);
+					/*pParent->GetImage().BitBlt(m_picture.GetDC()->GetSafeHdc()
+						, 0, 0, SRCCOPY);*/
+					m_nObjWidth = m_image.GetWidth();
+					m_nObjHeight = m_image.GetHeight();
 
-			m_nObjWidth = m_image.GetWidth();
-			m_nObjHeight = m_image.GetHeight();
+					m_image.StretchBlt(m_picture.GetDC()->GetSafeHdc()
+						, 0, 0, rect.Width(), rect.Height(), SRCCOPY);//缩放
+					m_picture.InvalidateRect(NULL); //标记控件的整个客户区域内容过时，请在合适的时机重新绘制
+					m_image.Destroy();
+					m_isFull = false;
+					TRACE("更新图片完成 %d %d\r\n", m_nObjWidth, m_nObjHeight);
+				}
 
-			m_image.StretchBlt(m_picture.GetDC()->GetSafeHdc()
-				, 0, 0, rect.Width(), rect.Height(),SRCCOPY);//缩放
-			m_picture.InvalidateRect(NULL); //标记控件的整个客户区域内容过时，请在合适的时机重新绘制
-			m_image.Destroy();
-			m_isFull = false;
-			TRACE("更新图片完成 %d %d\r\n", m_nObjWidth, m_nObjHeight);
+				break;
+			}
+			case 5://鼠标操作
+			case 7:
+			case 8:
+			default:
+				break;
+			}
 		}
 	}
-	CDialogEx::OnTimer(nIDEvent);
+	return 0;
 }
 
 void CWatchDialog::OnLButtonDblClk(UINT nFlags, CPoint point)

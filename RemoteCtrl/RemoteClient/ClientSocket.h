@@ -10,7 +10,9 @@
 #include"Packet.h"
 #include"EdoyunTool.h"
 #define WM_SEND_PACK (WM_USER+1) //发送包数据
+#ifndef WM_SEND_PACK_ACK
 #define WM_SEND_PACK_ACK (WM_USER+2) //应答
+#endif
 #define BUFFER_SIZE 2048000
 
 

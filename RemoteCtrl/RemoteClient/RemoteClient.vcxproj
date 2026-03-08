@@ -216,6 +216,7 @@
     <ResourceCompile Include="RemoteClient.rc" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="cpp.hint" />
     <None Include="res\RemoteClient.rc2" />
   </ItemGroup>
   <ItemGroup>

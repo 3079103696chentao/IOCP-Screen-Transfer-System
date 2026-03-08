@@ -66,7 +66,7 @@ void CClientController::UpdateAddress(int nIP, int nPort) {
 }
 
 bool CClientController::SendCommandPacket(HWND hWnd, int nCmd, bool bAutoClose, BYTE* pData,
-	size_t nLength)
+	size_t nLength, WPARAM wParam)
 {
 	TRACE(" cmd: %d ,%s start %lld \r\n", nCmd, __FUNCTION__, GetTickCount64());
 
@@ -83,6 +83,13 @@ int CClientController::GetImage(CImage& image)
 	return CEdoyunTool::Bytes2Image(image, pClient->GetPacket().strData);
 }
 
+void CClientController::DwonloadEnd() {
+	m_statusDlg.ShowWindow(SW_HIDE);
+	m_remoteDlg.EndWaitCursor();
+	m_remoteDlg.MessageBox(_T("下载完成！！"), _T("完成"));
+}
+
+
 int CClientController::DownFile(CString strPath)
 {
 	CFileDialog dlg(FALSE, NULL,
@@ -93,10 +100,17 @@ int CClientController::DownFile(CString strPath)
 	if (dlg.DoModal() == IDOK) {
 		m_strRemote = strPath;
 		m_strLocal = dlg.GetPathName();
-		m_hThreadDownload = (HANDLE)_beginthread(&CClientController::threadDownloadFileEntry, 0, this);
-		if (WaitForSingleObject(m_hThreadDownload, 0) != WAIT_TIMEOUT) {
+		FILE* pFile = fopen(m_strLocal, "wb+");
+		if (pFile == nullptr) {
+			AfxMessageBox(_T("本地没有权限保存该文件，或者文件无法创建！！！"));
 			return -1;
 		}
+		SendCommandPacket(m_remoteDlg.GetSafeHwnd(), 4, false,
+			(BYTE*)(LPCTSTR)m_strRemote, m_strRemote.GetLength(), (WPARAM)pFile);
+		/*m_hThreadDownload = (HANDLE)_beginthread(&CClientController::threadDownloadFileEntry, 0, this);
+		if (WaitForSingleObject(m_hThreadDownload, 0) != WAIT_TIMEOUT) {
+			return -1;
+		}*/
 		m_remoteDlg.BeginWaitCursor();
 		m_statusDlg.m_info.SetWindowText(_T("命令正在执行中！"));
 		m_statusDlg.ShowWindow(SW_SHOW);
