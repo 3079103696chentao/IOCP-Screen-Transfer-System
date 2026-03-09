@@ -73,8 +73,11 @@ BOOL CRemoteClientApp::InitInstance()
 
 	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 	CClientController* controller = CClientController::getInstance();
-	controller->InitController();
+
 	INT_PTR nResponse = controller->Invoke(m_pMainWnd);
+	
+	
+	
 	
 	if (nResponse == IDOK)
 	{

@@ -31,13 +31,14 @@ void CClientController::releaseInstance() {
 	}
 }
 
-int CClientController::InitController()
-{
-	/*m_hThread = (HANDLE)_beginthreadex(NULL, 0, &CClientController::threadEntry,
-		this, 0, &m_nThreadID);*/
-	m_statusDlg.Create(IDD_DLG_STATUS, &m_remoteDlg);
-	return 0;
-}
+//int CClientController::InitController()
+//{
+//	/*m_hThread = (HANDLE)_beginthreadex(NULL, 0, &CClientController::threadEntry,
+//		this, 0, &m_nThreadID);*/
+//	//m_statusDlg.Create(IDD_DLG_STATUS, &m_remoteDlg);
+//	///*m_statusDlg.ShowWindow(SW_HIDE);*/
+//	return 0;
+//}
 
 int CClientController::Invoke(CWnd* pMainWnd) {
 
@@ -111,10 +112,11 @@ int CClientController::DownFile(CString strPath)
 			(BYTE*)(LPCTSTR)m_strRemote, m_strRemote.GetLength(), (WPARAM)(LPCTSTR)m_strLocal);
 		
 		m_remoteDlg.BeginWaitCursor();
+
+		m_statusDlg.Create(IDD_DLG_STATUS, &m_remoteDlg);
 		m_statusDlg.m_info.SetWindowText(_T("命令正在执行中！"));
 		m_statusDlg.ShowWindow(SW_SHOW);
-		m_statusDlg.BringWindowToTop();
-		//m_statusDlg.SetWindowPos(&CWnd::wndTopMost, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE); // 添加置顶
+
 		m_statusDlg.CenterWindow(&m_remoteDlg);
 		m_statusDlg.SetActiveWindow();//激活与 m_statusDlg 对象关联的对话框窗口
 		//调用后，该窗口将被激活并成为当前活动窗口，能够接收用户的键盘输入

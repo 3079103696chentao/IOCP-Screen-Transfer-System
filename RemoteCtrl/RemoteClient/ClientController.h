@@ -22,7 +22,7 @@ public:
 	//获取全局唯一对象
 	static CClientController* getInstance();
 
-	int InitController();
+	/*int InitController();*/
 	//启动
 	int Invoke(CWnd* pMainWnd);
 
