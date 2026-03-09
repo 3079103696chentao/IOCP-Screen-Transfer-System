@@ -1,10 +1,11 @@
 ﻿#pragma once
 #include "afxdialogex.h"
-
+#include<mutex>
 #ifndef WM_SEND_PACK_ACK
 #define WM_SEND_PACK_ACK (WM_USER+2) //应答
 #endif
 // CWatchDialog 对话框
+static std::mutex m_watch_mtx;
 
 class CWatchDialog : public CDialogEx
 {
@@ -22,6 +23,7 @@ public:
 	int m_nObjWidth;
 	int m_nObjHeight;
 	CImage m_image;//图片缓存
+	
 protected:
 	bool m_isFull;//缓存是否有数据，true表示有缓存数据 false表示没有缓存数据
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 支持

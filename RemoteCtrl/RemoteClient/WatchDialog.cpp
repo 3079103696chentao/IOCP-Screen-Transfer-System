@@ -51,22 +51,26 @@ END_MESSAGE_MAP()
 
 CPoint CWatchDialog::UserPoint2RemoteScreenPoint(CPoint& point, bool isScreen)
 {
-	
+
 	CRect clientRect;
 	if (isScreen) ScreenToClient(&point);
-	TRACE("x = %d y = %d\r\n", point.x, point.y);
+	TRACE("点击时，相对于客户端的point坐标x = %d y = %d\r\n", point.x, point.y);
 
 	m_picture.GetWindowRect(clientRect);
 	TRACE(_T("m_picture HWND: %p, rect: %d,%d,%d,%d, width: %d, height: %d\r\n"),
-			m_picture.m_hWnd, clientRect.left, clientRect.top, clientRect.right, clientRect.bottom,
-			clientRect.Width(), clientRect.Height());
+		m_picture.m_hWnd, clientRect.left, clientRect.top, clientRect.right, clientRect.bottom,
+		clientRect.Width(), clientRect.Height());
 	TRACE("m_nObjWidth = %d, m_nObjHeight = %d\r\n", m_nObjWidth, m_nObjHeight);
 	ScreenToClient(&clientRect);
 	point.x -= clientRect.left;
 	point.y -= clientRect.top;
-    //本地坐标到远程坐标
-    return CPoint(point.x * m_nObjWidth/ clientRect.Width(), point.y * m_nObjHeight / clientRect.Height());
+	/*m_picture.ScreenToClient(&point);*/
+
+	TRACE("转换后，相对于m_picture的坐标 x = %d, y = %d\r\n", point.x, point.y);
 	
+	//本地坐标到远程坐标
+	return CPoint(point.x * m_nObjWidth / clientRect.Width(), point.y * m_nObjHeight / clientRect.Height());
+
 }
 
 BOOL CWatchDialog::OnInitDialog()
@@ -98,30 +102,31 @@ LRESULT CWatchDialog::OnSendPackAck(WPARAM wParam, LPARAM lParam)
 	else {
 		CPacket* pPacket = (CPacket*)wParam;
 		if (pPacket != NULL) {
-			switch (pPacket->sCmd) {
+			CPacket head = *pPacket;
+			delete pPacket;
+			switch (head.sCmd) {
 			case 6://发送屏幕内容
 			{
-				if (m_isFull) {//感觉有问题，不应该是！m_isFull
-					//DC device context
-					CEdoyunTool::Bytes2Image(m_image, pPacket->strData);
-					CRect rect;
-					m_picture.GetWindowRect(rect);
-					/*pParent->GetImage().BitBlt(m_picture.GetDC()->GetSafeHdc()
-						, 0, 0, SRCCOPY);*/
-					m_nObjWidth = m_image.GetWidth();
-					m_nObjHeight = m_image.GetHeight();
+				CEdoyunTool::Bytes2Image(m_image, head.strData);
+				CRect rect;
+				m_picture.GetWindowRect(rect);
 
-					m_image.StretchBlt(m_picture.GetDC()->GetSafeHdc()
-						, 0, 0, rect.Width(), rect.Height(), SRCCOPY);//缩放
-					m_picture.InvalidateRect(NULL); //标记控件的整个客户区域内容过时，请在合适的时机重新绘制
-					m_image.Destroy();
-					m_isFull = false;
-					TRACE("更新图片完成 %d %d\r\n", m_nObjWidth, m_nObjHeight);
-				}
+				m_nObjWidth = m_image.GetWidth();
+				m_nObjHeight = m_image.GetHeight();
 
+				m_image.StretchBlt(m_picture.GetDC()->GetSafeHdc()
+					, 0, 0, rect.Width(), rect.Height(), SRCCOPY);//缩放
+				m_picture.InvalidateRect(NULL); //标记控件的整个客户区域内容过时，请在合适的时机重新绘制
+				m_image.Destroy();
+				TRACE("更新图片完成 %d %d\r\n", m_nObjWidth, m_nObjHeight);
 				break;
 			}
-			case 5://鼠标操作
+			case 5: {//鼠标操作
+				TRACE("mouse move Success\r\n");
+				break;
+			}
+				
+
 			case 7:
 			case 8:
 			default:
@@ -151,12 +156,14 @@ void CWatchDialog::OnLButtonDblClk(UINT nFlags, CPoint point)
 
 void CWatchDialog::OnLButtonDown(UINT nFlags, CPoint point)
 {
-	
+
 
 	if (m_nObjHeight != -1 && m_nObjWidth != -1) {
 		//坐标转换
+		m_watch_mtx.lock();
 		CPoint remote = UserPoint2RemoteScreenPoint(point);
-		TRACE(_T("x= %d, y=%d \r\n", remote.x, remote.y));
+		m_watch_mtx.unlock();
+		TRACE(_T("remote x= %d, y=%d \r\n"), remote.x, remote.y);
 		//封装
 		MOUSEEV event;
 		event.ptXY = remote;

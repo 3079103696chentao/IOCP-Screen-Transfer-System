@@ -6,7 +6,6 @@
 #include<vector>
 #include<list>
 #include<map>
-#include<mutex>
 #include"Packet.h"
 #include"EdoyunTool.h"
 #define WM_SEND_PACK (WM_USER+1) //发送包数据
@@ -98,7 +97,6 @@ private:
 	UINT m_nThreadID;
 	HANDLE m_hThread;
 	HANDLE m_hEventInvoke;
-	std::mutex m_lock;
 	std::list<CPacket>m_lstSend;
 	std::map<HANDLE, std::list<CPacket>>m_mapAck;
 	

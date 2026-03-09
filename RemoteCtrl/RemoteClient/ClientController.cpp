@@ -10,15 +10,15 @@ CClientController* CClientController::getInstance() {
 	if (m_instance == nullptr) {
 		m_instance = new CClientController();
 	}
-	struct { UINT nMsg; MSGFUNC func; }MsgFuncs[] = 
+	struct { UINT nMsg; MSGFUNC func; }MsgFuncs[] =
 	{
 		{WM_SHOW_STATUS, &CClientController::OnShowStatus},
 		{WM_SHOW_WATCH, &CClientController::OnShowWatcher},
-	    {(UINT)-1, nullptr}
+		{(UINT)-1, nullptr}
 	};
 
 	for (int i = 0; MsgFuncs[i].nMsg != -1; i++) {
-		m_mapFunc.insert({ MsgFuncs[i].nMsg, MsgFuncs[i].func});
+		m_mapFunc.insert({ MsgFuncs[i].nMsg, MsgFuncs[i].func });
 	}
 
 	return m_instance;
@@ -39,7 +39,7 @@ int CClientController::InitController()
 	return 0;
 }
 
-int CClientController::Invoke(CWnd* pMainWnd){
+int CClientController::Invoke(CWnd* pMainWnd) {
 
 	pMainWnd = &m_remoteDlg;
 
@@ -50,7 +50,7 @@ LRESULT CClientController::SendMessage(MSG msg)
 {
 	//线程间通信 事件 同步对象 可以阻塞线程，让出CPU，知道条件满足，不存储事件，仅用于同步
 	HANDLE hEvent = CreateEvent(NULL, TRUE, FALSE, NULL); //创建事件，初始无信号得到事件句柄
-	if (hEvent == NULL) return -2;  
+	if (hEvent == NULL) return -2;
 	MSGINFO info(msg);
 
 	PostThreadMessage(m_nThreadID, WM_SEND_MESSAGE,
@@ -62,7 +62,7 @@ LRESULT CClientController::SendMessage(MSG msg)
 }
 
 void CClientController::UpdateAddress(int nIP, int nPort) {
-	 CClientSocket::getInstance()->UpdateAddress(nIP, nPort);
+	CClientSocket::getInstance()->UpdateAddress(nIP, nPort);
 }
 
 bool CClientController::SendCommandPacket(HWND hWnd, int nCmd, bool bAutoClose, BYTE* pData,
@@ -72,7 +72,7 @@ bool CClientController::SendCommandPacket(HWND hWnd, int nCmd, bool bAutoClose, 
 
 	CClientSocket* pClient = CClientSocket::getInstance();
 
-	bool ret =  pClient->SendPacket(hWnd, CPacket(nCmd, pData, nLength), bAutoClose);
+	bool ret = pClient->SendPacket(hWnd, CPacket(nCmd, pData, nLength), bAutoClose);
 	if (!ret) {
 		Sleep(30);
 		ret = pClient->SendPacket(hWnd, CPacket(nCmd, pData, nLength), bAutoClose);
@@ -127,7 +127,7 @@ int CClientController::DownFile(CString strPath)
 	return 0;
 }
 
-void CClientController::StartWatchScreen(){
+void CClientController::StartWatchScreen() {
 	m_bIsClosed = false;
 	m_hThreadWatch = (HANDLE)_beginthread(
 		&CClientController::threadWatchScreenEntry, 0, this);
@@ -136,42 +136,35 @@ void CClientController::StartWatchScreen(){
 	WaitForSingleObject(m_hThreadWatch, 500);
 }
 
-void CClientController::threadWatchScreen(){
+void CClientController::threadWatchScreen() {
 	//每当检测到m_image更新了，就发送命令到服务端，将得到的图片数据放到lstPacks，之后拿出数据，将其加载入图片中
 	Sleep(50);
+	ULONGLONG nTick = GetTickCount64();
 	while (!m_bIsClosed) {
-		if (m_watchDlg.isFull() == false) {
-			std::list<CPacket>lstPacks;
-			int ret = SendCommandPacket(m_watchDlg.GetSafeHwnd(), 6, true, NULL);
-			//TODO:添加消息相应函数 SEND_PACK_ACK
-			//TODO:控制发送频率
-			TRACE("Send获取Screen数据之后得到的数据包大小%d\r\n", lstPacks.size());
-			if (lstPacks.size() <= 0) continue;
-			if (ret == 6) {
-				if (CEdoyunTool::Bytes2Image(m_watchDlg.GetImage(),
-					lstPacks.front().strData) == 0) {
-					m_watchDlg.SetImageStatus(true);
-					TRACE("成功获取图片\r\n");
-				}
-				else {
-					TRACE("获取图片失败！ret = %d\r\n", ret);
-				}
-			}
-			else {
-				Sleep(1);
-			}
+		if (GetTickCount64() - nTick < 200) {
+			Sleep(200 + nTick - DWORD(GetTickCount64()));
 		}
-		Sleep(1);
+		nTick = GetTickCount64();
+		int ret = SendCommandPacket(m_watchDlg.GetSafeHwnd(), 6, true);
+		//TODO:添加消息相应函数 SEND_PACK_ACK
+		//TODO:控制发送频率
+		if (!ret) {
+			TRACE("获取图片失败！ret = %d\r\n", ret);
+			Sleep(1);
+		}
 	}
+	TRACE("m_IsClosed is true, watchDlg closed\r\n");
+
 }
 
-void CClientController::threadWatchScreenEntry(void* arg){
+
+void CClientController::threadWatchScreenEntry(void* arg) {
 	CClientController* thiz = (CClientController*)arg;
 	thiz->threadWatchScreen();
 	_endthread();
 }
 
-void CClientController::threadDownloadFile(){
+void CClientController::threadDownloadFile() {
 
 	FILE* pFile = fopen(m_strLocal, "wb+");
 	if (pFile == nullptr) {
@@ -212,10 +205,10 @@ void CClientController::threadDownloadFile(){
 	m_statusDlg.ShowWindow(SW_HIDE);
 	m_remoteDlg.EndWaitCursor();
 	m_remoteDlg.MessageBox(_T("下载完成！！"), _T("完成"));
-	
+
 }
 
-void CClientController::threadDownloadFileEntry(void* arg){
+void CClientController::threadDownloadFileEntry(void* arg) {
 
 	CClientController* thiz = (CClientController*)arg;
 	thiz->threadDownloadFile();
@@ -223,7 +216,7 @@ void CClientController::threadDownloadFileEntry(void* arg){
 
 }
 
-void CClientController::threadFunc(){
+void CClientController::threadFunc() {
 	MSG msg;
 	while (::GetMessage(&msg, NULL, 0, 0)) {
 		TranslateMessage(&msg);
@@ -240,12 +233,12 @@ void CClientController::threadFunc(){
 			}
 			SetEvent(hEvent); //置为有信号
 		}
-		
+
 	}
 
 }
 
-unsigned __stdcall CClientController::threadEntry(void* arg){
+unsigned __stdcall CClientController::threadEntry(void* arg) {
 	CClientController* thiz = (CClientController*)arg;
 
 	thiz->threadFunc();

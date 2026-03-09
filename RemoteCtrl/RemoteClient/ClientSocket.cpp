@@ -131,9 +131,13 @@ bool CClientSocket::SendPacket(HWND hWnd, const CPacket& pack, bool isAutoClosed
 	UINT nMode = isAutoClosed ? CSM_AUTOCLOSE : 0;
 
 	std::string strOut;
+	PACKET_DATA* pData = new PACKET_DATA(pack.Data(strOut), pack.Size(), nMode);
 	bool ret =  PostThreadMessage(m_nThreadID, WM_SEND_PACK,
-		(WPARAM)new PACKET_DATA(pack.Data(strOut), pack.Size(), isAutoClosed), (LPARAM)hWnd);
+		(WPARAM)pData, (LPARAM)hWnd);
 	TRACE("PostThreadMessage result is %d ,m_nThreadID is %d\r\n", ret, m_nThreadID);
+	if (ret == false) {
+		delete pData;
+	}
 	return ret;
 }
 
@@ -195,13 +199,12 @@ void CClientSocket::SendPack(UINT nMsg, WPARAM wParam, LPARAM lParam)
 			}
 			index += length;
 			length = index;
-			CPacket pack((BYTE*)buffer, length);
 			if (length > 0) {
 				HWND hWnd = (HWND)lParam;
-				::SendMessage(hWnd, WM_SEND_PACK_ACK, WPARAM(&pack), LPARAM(10));
+				::SendMessage(hWnd, WM_SEND_PACK_ACK, WPARAM(new CPacket((BYTE*)buffer, length)), LPARAM(10));
 				memmove(buffer, buffer + length, index - length);
 				index -= length;
-				TRACE("Send Message success cmd = %d\r\n", pack.sCmd);
+				TRACE("Send Message success\r\n");
 			}
 			else {
 			 	TRACE("CPacket Ω‚Œˆ ß∞‹ length =0\r\n");

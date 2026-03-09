@@ -456,7 +456,8 @@ LRESULT CRemoteClientDlg::OnSendPackAck(WPARAM wParam, LPARAM lParam) {
 	else {
 		CPacket* pPacket = (CPacket*)wParam;
 		if (pPacket != NULL) {
-			CPacket& head = *pPacket;
+			CPacket head = *pPacket;
+			delete pPacket;
 			switch (head.sCmd) {
 			case 1://获取磁盘分区
 			{
