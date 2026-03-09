@@ -43,14 +43,17 @@ typedef struct file_info {
 typedef struct PacketData{
 	std::string strData;
 	UINT nMode;
-	PacketData(const char* pData, size_t length, UINT mode) {
+	WPARAM m_wParam;
+	PacketData(const char* pData, size_t length, UINT mode, WPARAM wParam = NULL) {
 		strData.resize(length);
 		memcpy((char*)strData.c_str(), pData, length);
 		nMode = mode;
+		m_wParam = wParam;
 	}
 	PacketData(const PacketData& packet) {
 		strData = packet.strData;
 		nMode = packet.nMode;
+		m_wParam = packet.m_wParam;
 	}
 	PacketData& operator=(const PacketData& packet) {
 		auto tmp = packet;
@@ -61,6 +64,7 @@ typedef struct PacketData{
 	void swap(PacketData& packet) {
 		std::swap(strData, packet.strData);
 		std::swap(nMode, packet.nMode);
+		std::swap(m_wParam, packet.m_wParam);
 	}
 }PACKET_DATA;
 enum {
@@ -73,8 +77,8 @@ public:
 	
 	static CClientSocket* getInstance();
 	bool InitSocket();
-	int DealCommand();
-	bool SendPacket(HWND hWnd, const CPacket& pack, bool isAutoClosed);
+	/*int DealCommand();*/
+	bool SendPacket(HWND hWnd, const CPacket& pack, bool isAutoClosed, WPARAM wParam);
 	void SendPack(UINT nMsg, WPARAM wParam/*缓冲区的值*/, LPARAM lParam/*缓冲区的长度*/);
 	bool GetFilePath(std::string& strPath);
 	bool GetMouseEvent(MOUSEEV& mouse);

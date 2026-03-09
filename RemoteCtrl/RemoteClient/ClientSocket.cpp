@@ -5,7 +5,7 @@
 CClientSocket* CClientSocket::m_instance = nullptr;
 CClientSocket* pClient = CClientSocket::getInstance();
 CClientSocket::CHelper CClientSocket::m_helper;
-CClientSocket::CClientSocket():
+CClientSocket::CClientSocket() :
 	m_nIP(INADDR_ANY), m_nPort(0), m_socket(INVALID_SOCKET),
 	m_nThreadID(ERROR_INVALID_THREAD_ID), m_hThread(INVALID_HANDLE_VALUE)
 {
@@ -126,13 +126,13 @@ bool CClientSocket::Send(const CPacket& pack) {
 	return send(m_socket, pack.Data(strOut), pack.Size(), 0) > 0;
 }
 //函数内部调用PostThreadMessage()函数来通知线程函数threadFunc()的GetMessage()
-bool CClientSocket::SendPacket(HWND hWnd, const CPacket& pack, bool isAutoClosed) {
-	
+bool CClientSocket::SendPacket(HWND hWnd, const CPacket& pack, bool isAutoClosed, WPARAM wParam) {
+
 	UINT nMode = isAutoClosed ? CSM_AUTOCLOSE : 0;
 
 	std::string strOut;
-	PACKET_DATA* pData = new PACKET_DATA(pack.Data(strOut), pack.Size(), nMode);
-	bool ret =  PostThreadMessage(m_nThreadID, WM_SEND_PACK,
+	PACKET_DATA* pData = new PACKET_DATA(pack.Data(strOut), pack.Size(), nMode, wParam);
+	bool ret = PostThreadMessage(m_nThreadID, WM_SEND_PACK,
 		(WPARAM)pData, (LPARAM)hWnd);
 	TRACE("PostThreadMessage result is %d ,m_nThreadID is %d\r\n", ret, m_nThreadID);
 	if (ret == false) {
@@ -176,79 +176,77 @@ void CClientSocket::SendPack(UINT nMsg, WPARAM wParam, LPARAM lParam)
 		TRACE("网络连接失败\r\n");
 		return;
 	}
+	if ((PACKET_DATA*)wParam == nullptr) {
+		TRACE("PACKET_DATA为空\r\n");
+		return;
+	}
+	PACKET_DATA packet_data = *(PACKET_DATA*)wParam;
+	delete (PACKET_DATA*)wParam;
+	ret = send(m_socket, packet_data.strData.c_str(),
+		packet_data.strData.size(), 0);
+	if (ret < 0) {
+		TRACE("send to serve failed m_socket = %d, ret = %d\r\n", m_socket, ret);
+		CloseSocket();
+		return;
+	}
 	static size_t index = 0;
 	char* buffer = m_buffer.data();
 	//定义消息数据结构(数据、长度、模式)，回调消息的数据结构（HANDLE MSSAGE）
-	 while(m_socket!=INVALID_SOCKET) {
-		 if ((PACKET_DATA*)wParam == nullptr) {
-			 TRACE("PACKET_DATA为空\r\n");
-			 break;
-		 }
-        PACKET_DATA packet_data = *(PACKET_DATA*)wParam;
-		delete (PACKET_DATA*)wParam;
-
-		int ret = send(m_socket, packet_data.strData.c_str(),
-			packet_data.strData.size(), 0);
-
-		if (ret > 0) {
-			size_t length = recv(m_socket, buffer+index, BUFFER_SIZE - index, 0);
-			TRACE("recv length = %d, index = %d\r\n", length, index);
-			if (length <= 0 && index <= 0) {
-				CloseSocket();
-				break;
-			}
-			index += length;
-			length = index;
-			if (length > 0) {
-				HWND hWnd = (HWND)lParam;
-				::SendMessage(hWnd, WM_SEND_PACK_ACK, WPARAM(new CPacket((BYTE*)buffer, length)), LPARAM(10));
-				memmove(buffer, buffer + length, index - length);
-				index -= length;
-				TRACE("Send Message success\r\n");
-			}
-			else {
-			 	TRACE("CPacket 解析失败 length =0\r\n");
-				break;
-			}
-			if (packet_data.nMode) {
-				CloseSocket();
-				break;
-			}
+	while (m_socket != INVALID_SOCKET) {
+		size_t length = recv(m_socket, buffer + index, BUFFER_SIZE - index, 0);
+		TRACE("recv length = %d, index = %d\r\n", length, index);
+		if (length <= 0 && index <= 0) {
+			CloseSocket();
+			break;
+		}
+		index += length;
+		length = index;
+		CPacket* pPacket = new CPacket((BYTE*)buffer, length);
+		if (length > 0) {
+			std::string data;
+			HWND hWnd = (HWND)lParam;
+			::SendMessage(hWnd, WM_SEND_PACK_ACK, WPARAM(pPacket), packet_data.m_wParam);
+			memmove(buffer, buffer + length, index - length);
+			index -= length;
+			TRACE("Send Message success\r\n");
 		}
 		else {
-			TRACE("send to serve failed m_socket = %d, ret = %d\r\n", m_socket, ret);
+			TRACE("CPacket 解析失败 length =0\r\n");
+			break;
+		}
+		if (packet_data.nMode) {
 			CloseSocket();
 			break;
 		}
 	}
 }
 
-int CClientSocket::DealCommand()
-{
-	if (m_socket == -1) return -1;
-	char* buffer = m_buffer.data();
-	//memset(buffer, 0, m_buffer.size());
-	static size_t index = 0;
-	while (true)
-	{
-		size_t len = recv(m_socket, buffer + index, BUFFER_SIZE - index, 0);
-		TRACE("recv len:%d,  index :%d\r\n", len, index);
-		if (len <= 0 && index <= 0) {
-			return -1;
-		}
-		CEdoyunTool::Dump((BYTE*)buffer, len);
-		index += len;
-		len = index; //等于buffer中数据的大小
-		m_packet = CPacket((BYTE*)buffer, len);
-		if (len > 0) {
-			memmove(buffer, buffer + len, BUFFER_SIZE - len);
-			index -= len;
-			//TRACE("index :%d\r\n", index);
-			return m_packet.sCmd;
-		}
-
-	}
-}
+//int CClientSocket::DealCommand()
+//{
+//	if (m_socket == -1) return -1;
+//	char* buffer = m_buffer.data();
+//	//memset(buffer, 0, m_buffer.size());
+//	static size_t index = 0;
+//	while (true)
+//	{
+//		size_t len = recv(m_socket, buffer + index, BUFFER_SIZE - index, 0);
+//		TRACE("recv len:%d,  index :%d\r\n", len, index);
+//		if (len <= 0 && index <= 0) {
+//			return -1;
+//		}
+//		CEdoyunTool::Dump((BYTE*)buffer, len);
+//		index += len;
+//		len = index; //等于buffer中数据的大小
+//		m_packet = CPacket((BYTE*)buffer, len);
+//		if (len > 0) {
+//			memmove(buffer, buffer + len, BUFFER_SIZE - len);
+//			index -= len;
+//			//TRACE("index :%d\r\n", index);
+//			return m_packet.sCmd;
+//		}
+//
+//	}
+//}
 
 bool CClientSocket::GetFilePath(std::string& strPath) { //获取文件列表
 	if (m_packet.sCmd >= 2 && m_packet.sCmd <= 4) {
@@ -360,7 +358,7 @@ void CClientSocket::threadFunc()
 		auto it = m_mapFunc.find(msg.message);
 		if (it != m_mapFunc.end()) {
 			TRACE("The message is found sunccess\r\n");
-			(this->*it->second)(msg.message, 
+			(this->*it->second)(msg.message,
 				msg.wParam, msg.lParam);
 		}
 	}

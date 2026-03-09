@@ -106,13 +106,10 @@ END_MESSAGE_MAP()
 BOOL CRemoteClientDlg::OnInitDialog()
 {
 	CDialogEx::OnInitDialog();
-
 	// 将“关于...”菜单项添加到系统菜单中。
-
 	// IDM_ABOUTBOX 必须在系统命令范围内。
 	ASSERT((IDM_ABOUTBOX & 0xFFF0) == IDM_ABOUTBOX);
 	ASSERT(IDM_ABOUTBOX < 0xF000);
-
 	CMenu* pSysMenu = GetSystemMenu(FALSE);
 	if (pSysMenu != nullptr)
 	{
@@ -126,30 +123,8 @@ BOOL CRemoteClientDlg::OnInitDialog()
 			pSysMenu->AppendMenu(MF_STRING, IDM_ABOUTBOX, strAboutMenu);
 		}
 	}
-
-	// 设置此对话框的图标。  当应用程序主窗口不是对话框时，框架将自动
-	//  执行此操作
-	SetIcon(m_hIcon, TRUE);			// 设置大图标
-	SetIcon(m_hIcon, FALSE);		// 设置小图标
-
-	// TODO: 在此添加额外的初始化代码
-	UpdateData();//将控件当前值保存到对应的成员变量
-
-	m_hTreeSelected = NULL;
-	m_server_address = 0xAC15418D;//远程电脑
-	//m_server_address = 0x7F000001;//本地
-
-	m_nPort = _T("9527");
-
-
-	UpdateData(false);//将成员变量的值显示到对应的控件
-
-	CClientController* pController = CClientController::getInstance();
-	pController->UpdateAddress(m_server_address, atoi((LPCTSTR)m_nPort));
-
-	m_dlgStatus.Create(IDD_DLG_STATUS, this);
-	m_dlgStatus.ShowWindow(SW_HIDE);
-
+	
+	InitUIData();
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
 
@@ -223,7 +198,137 @@ void CRemoteClientDlg::OnBnClickedBtnFileinfo()
 
 }
 
+void CRemoteClientDlg::InitUIData(){
 
+	// 设置此对话框的图标。  当应用程序主窗口不是对话框时，框架将自动
+	//  执行此操作
+	SetIcon(m_hIcon, TRUE);			// 设置大图标
+	SetIcon(m_hIcon, FALSE);		// 设置小图标
+	UpdateData();//将控件当前值保存到对应的成员变量
+	m_hTreeSelected = NULL;
+	m_server_address = 0xAC15418D;//远程电脑
+	//m_server_address = 0x7F000001;//本地
+	m_nPort = _T("9527");
+	m_pFile = nullptr;
+	CClientController* pController = CClientController::getInstance();
+	pController->UpdateAddress(m_server_address, atoi((LPCTSTR)m_nPort));
+	UpdateData(FALSE);//将成员变量的值显示到对应的控件
+	m_statusDlg.Create(IDD_DLG_STATUS, this);
+	m_statusDlg.ShowWindow(SW_HIDE);
+}
+
+void CRemoteClientDlg::str2Tree(CPacket& head){
+
+	std::string drivers = head.strData;
+	std::string dr;
+	m_Tree.DeleteAllItems();
+	for (size_t i = 0; i < drivers.size(); i++) {
+		if (drivers[i] == ',') {
+			dr += ":";
+			HTREEITEM hTemp = m_Tree.InsertItem(dr.c_str(), TVI_ROOT, TVI_LAST);
+			m_Tree.InsertItem(NULL, hTemp, TVI_LAST);
+			dr.clear();
+			continue;
+		}
+		dr += drivers[i];
+	}
+	if (drivers.size() != NULL) {
+		dr += ":";
+		HTREEITEM hTemp = m_Tree.InsertItem(dr.c_str(), TVI_ROOT, TVI_LAST);
+		m_Tree.InsertItem(NULL, hTemp, TVI_LAST);
+		dr.clear();
+	}
+}
+
+void CRemoteClientDlg::UpdataFileInfo(CPacket& head){
+
+	PFILEINFO pInfo = (PFILEINFO)head.strData.c_str();
+	if (pInfo->HaNext == FALSE) return;
+	TRACE("[%s] isdir %d\r\n", pInfo->szFileName, pInfo->isDirectory);
+	if (pInfo->isDirectory) {
+		if ((CString(pInfo->szFileName) == ".") || (CString(pInfo->szFileName) == "..")) {
+			return;
+		}
+		HTREEITEM hTemp = m_Tree.InsertItem(pInfo->szFileName, m_hTreeSelected, TVI_LAST);
+		m_Tree.InsertItem("", hTemp, TVI_LAST);
+		m_Tree.Expand(m_hTreeSelected, TVE_EXPAND);//原来是没有展开
+	}
+	else {
+		m_List.InsertItem(0, pInfo->szFileName);
+	}
+}
+
+void CRemoteClientDlg::UpdateDownloadFile(CPacket& head, CString& strLocal){
+	TRACE("strLocal is %s\r\n", strLocal);
+	if (!m_pFile) {
+		m_pFile = fopen(strLocal, "wb+");
+		if (m_pFile == nullptr) {
+			AfxMessageBox(_T("本地没有权限保存该文件，或者文件无法创建！！！"));
+			return;
+		}
+	}
+	static LONGLONG length = 0, index = 0;
+	if (length == 0) {
+		length = *(long long*)head.strData.c_str();
+		TRACE("The file length is %lld\r\n", length);
+		if (length == 0) {
+			AfxMessageBox("文件长度为零或者无法读取文件！！！");
+			CClientController::getInstance()->DwonloadEnd();
+		}
+	}
+	else if (length > 0 && (index >= length)) {
+		fclose(m_pFile);
+		length = 0;
+		index = 0;
+		CClientController::getInstance()->DwonloadEnd();
+	}
+	else {
+		if (index < length) {
+			fwrite(head.strData.c_str(), 1, head.strData.size(), m_pFile);
+			index += head.strData.size();
+		}
+	}
+}
+
+void CRemoteClientDlg::DealCommad(WPARAM wParam, LPARAM lParam){
+	CPacket* pPacket = (CPacket*)wParam;
+	if (pPacket != NULL) {
+		CPacket head = *pPacket;
+		delete pPacket;
+		switch (head.sCmd) {
+		case 1://获取磁盘分区
+		{
+			str2Tree(head);
+			break;
+		}
+		case 2://查看指定目录下的文件
+		{
+			UpdataFileInfo(head);
+			break;
+		}
+		case 3:
+			MessageBox("打开文件完成！", "操作完成", MB_ICONINFORMATION);
+			break;
+		case 4:
+		{
+			LPCTSTR lpstr = reinterpret_cast<LPCSTR>(lParam);
+			CString strLocal = lpstr;
+			UpdateDownloadFile(head, strLocal);
+			break;
+		}
+		case 9:
+			MessageBox("删除文件完成！", "操作完成", MB_ICONINFORMATION);
+			break;
+		case 1981:
+			MessageBox("连接测试成功！", "连接成功", MB_ICONINFORMATION);
+			break;
+		default:
+			TRACE(" unnown data received cmd %d ！\r\n", head.sCmd);
+			break;
+		}
+
+	}
+}
 
 void CRemoteClientDlg::LoadFileCurrent() {
 	HTREEITEM hTree = m_Tree.GetSelectedItem();
@@ -266,45 +371,49 @@ void CRemoteClientDlg::LoadFileInfo() {
 		TRACE("m_hTreeSelected 初始化失败");
 		return;
 	}
-	if (m_Tree.GetChildItem(m_hTreeSelected) == NULL) {
+	/*if (m_Tree.GetChildItem(m_hTreeSelected) == NULL) {
 		TRACE("m_Tree.GetChildItem(m_hTreeSelected)没有子目录");
 		return;
-	}
+	}*/
 	DeleteTreeChildrenItem(m_hTreeSelected);//避免多次双击，产生多个相同子目录
 	m_List.DeleteAllItems();
 	CString strPath = GetPath(m_hTreeSelected);
-	int nCmd = CClientController::getInstance()->SendCommandPacket(GetSafeHwnd(), 2, false, (BYTE*)(LPCTSTR)strPath, strPath.GetLength());
-	PFILEINFO pInfo = (PFILEINFO)CClientSocket::getInstance()->GetPacket().strData.c_str();
-	CClientSocket* pClient = CClientSocket::getInstance();
-	int Count = 0;
-	while (pInfo->HaNext) {
-		//	TRACE("[%s] isdir %d\r\n", pInfo->szFileName, pInfo->isDirectory);
-		if (pInfo->isDirectory) {
-			if ((CString(pInfo->szFileName) == ".") || (CString(pInfo->szFileName) == "..")) {
-
-				int cmd = pClient->DealCommand();
-				TRACE("ack:%d\r\n", cmd);
-				if (cmd < 0) break;
-				pInfo = (PFILEINFO)CClientSocket::getInstance()->GetPacket().strData.c_str();
-
-				continue;
-			}
-			HTREEITEM hTemp = m_Tree.InsertItem(pInfo->szFileName, m_hTreeSelected, TVI_LAST);
-			m_Tree.InsertItem("", hTemp, TVI_LAST);
-		}
-		else {
-			m_List.InsertItem(0, pInfo->szFileName);
-		}
-
-		Count++;
-		int cmd = pClient->DealCommand();
-		//TRACE("ack:%d\r\n", cmd);
-		if (cmd < 0) break;
-		pInfo = (PFILEINFO)CClientSocket::getInstance()->GetPacket().strData.c_str();
+	int ret = CClientController::getInstance()->SendCommandPacket(GetSafeHwnd(), 2, false, (BYTE*)(LPCTSTR)strPath, strPath.GetLength());
+	if (!ret) {
+		TRACE("get dir Tree command发送失败\r\n");
+		return;
 	}
-	//pClient->CloseSocket();
+	//PFILEINFO pInfo = (PFILEINFO)CClientSocket::getInstance()->GetPacket().strData.c_str();
+	//CClientSocket* pClient = CClientSocket::getInstance();
+	//int Count = 0;
+	//while (pInfo->HaNext) {
+	//	//	TRACE("[%s] isdir %d\r\n", pInfo->szFileName, pInfo->isDirectory);
+	//	if (pInfo->isDirectory) {
+	//		if ((CString(pInfo->szFileName) == ".") || (CString(pInfo->szFileName) == "..")) {
 
-	TRACE("Client get Count: %d\r\n", Count);
+	//			int cmd = pClient->DealCommand();
+	//			TRACE("ack:%d\r\n", cmd);
+	//			if (cmd < 0) break;
+	//			pInfo = (PFILEINFO)CClientSocket::getInstance()->GetPacket().strData.c_str();
+
+	//			continue;
+	//		}
+	//		HTREEITEM hTemp = m_Tree.InsertItem(pInfo->szFileName, m_hTreeSelected, TVI_LAST);
+	//		m_Tree.InsertItem("", hTemp, TVI_LAST);
+	//	}
+	//	else {
+	//		m_List.InsertItem(0, pInfo->szFileName);
+	//	}
+
+	//	Count++;
+	//	int cmd = pClient->DealCommand();
+	//	//TRACE("ack:%d\r\n", cmd);
+	//	if (cmd < 0) break;
+	//	pInfo = (PFILEINFO)CClientSocket::getInstance()->GetPacket().strData.c_str();
+	//}
+	////pClient->CloseSocket();
+
+	//TRACE("Client get Count: %d\r\n", Count);
 }
 
 CString CRemoteClientDlg::GetPath(HTREEITEM hTree) {
@@ -447,98 +556,15 @@ void CRemoteClientDlg::OnEnChangeEditPort()
 
 LRESULT CRemoteClientDlg::OnSendPackAck(WPARAM wParam, LPARAM lParam) {
 	if (lParam < 0) {
+		TRACE("socket is error %d\r\n", lParam);
 		//错误处理
 	}
 	else if (lParam == 1) {
-
+		TRACE("socket is closed\r\n");
 		//对方关闭了套接字
 	}
 	else {
-		CPacket* pPacket = (CPacket*)wParam;
-		if (pPacket != NULL) {
-			CPacket head = *pPacket;
-			delete pPacket;
-			switch (head.sCmd) {
-			case 1://获取磁盘分区
-			{
-				std::string drivers = head.strData;
-				std::string dr;
-				m_Tree.DeleteAllItems();
-				for (size_t i = 0; i < drivers.size(); i++) {
-					if (drivers[i] == ',') {
-						dr += ":";
-						HTREEITEM hTemp = m_Tree.InsertItem(dr.c_str(), TVI_ROOT, TVI_LAST);
-						m_Tree.InsertItem(NULL, hTemp, TVI_LAST);
-						dr.clear();
-						continue;
-					}
-					dr += drivers[i];
-				}
-				if (drivers.size() != NULL) {
-					dr += ":";
-					HTREEITEM hTemp = m_Tree.InsertItem(dr.c_str(), TVI_ROOT, TVI_LAST);
-					m_Tree.InsertItem(NULL, hTemp, TVI_LAST);
-					dr.clear();
-				}
-				break;
-			}
-			case 2://查看指定目录下的文件
-			{
-				PFILEINFO pInfo = (PFILEINFO)head.strData.c_str();
-				if (pInfo->HaNext == FALSE) break;
-				TRACE("[%s] isdir %d\r\n", pInfo->szFileName, pInfo->isDirectory);
-				if (pInfo->isDirectory) {
-					if ((CString(pInfo->szFileName) == ".") || (CString(pInfo->szFileName) == "..")) {
-						break;
-					}
-					HTREEITEM hTemp = m_Tree.InsertItem(pInfo->szFileName, m_hTreeSelected, TVI_LAST);
-					m_Tree.InsertItem("", hTemp, TVI_LAST);
-				}
-				else {
-					m_List.InsertItem(0, pInfo->szFileName);
-				}
-				break;
-			}
-			case 3:
-				TRACE(" run file donw ！\r\n");
-				break;
-			case 4:
-			{
-				static LONGLONG length = 0, index = 0;
-				if (length == 0) {
-					length = *(long long*)head.strData.c_str();
-					if (length == 0) {
-						AfxMessageBox("文件长度为零或者无法读取文件！！！");
-						CClientController::getInstance()->DwonloadEnd();
-					}
-				}
-				else if (length > 0 && (index >= length)) {
-					fclose((FILE*)lParam);
-					length = 0;
-					index = 0;
-					CClientController::getInstance()->DwonloadEnd();
-				}
-				else {
-					FILE* pFile = (FILE*)lParam;
-					while (index < length) {
-						fwrite(head.strData.c_str(), 1, head.strData.size(), pFile);
-						index += head.strData.size();
-					}
-				}
-				break;
-			}
-			case 9:
-				TRACE(" delete file donw ！\r\n");
-				break;
-			case 1981:
-				TRACE(" test connection success ！\r\n");
-				break;
-			default:
-				TRACE(" unnown data received cmd %d ！\r\n", head.sCmd);
-				break;
-			}
-
-		}
+		DealCommad(wParam, lParam);
 	}
 	return 0;
 }

@@ -26,15 +26,15 @@ public:
 	//启动
 	int Invoke(CWnd* pMainWnd);
 
-	//发送消息
-	LRESULT SendMessage(MSG msg);
+	////发送消息
+	//LRESULT SendMessage(MSG msg);
 
 	//更新网络服务器的地址
 	void UpdateAddress(int nIp, int nPort);
 
-	int DealCommand() {
+	/*int DealCommand() {
 		return CClientSocket::getInstance()->DealCommand();
-	}
+	}*/
 	void CloseSocket() {
 		CClientSocket::getInstance()->CloseSocket();
 	}
@@ -56,7 +56,7 @@ public:
 		size_t nLength = 0,
 		WPARAM wParam = NULL
 		);
-	int GetImage(CImage& image);
+	/*int GetImage(CImage& image);*/
 	
 	void DwonloadEnd();
 	int DownFile(CString strPath);
@@ -66,30 +66,29 @@ public:
 protected:
 	void threadWatchScreen();
 	static void threadWatchScreenEntry(void* arg);
-	void threadDownloadFile();
-	static void threadDownloadFileEntry(void* arg);
+	
 	CClientController():m_statusDlg(&m_remoteDlg)
 		,m_watchDlg(&m_remoteDlg)
 	{
-		m_hThread = INVALID_HANDLE_VALUE;
+	/*	m_hThread = INVALID_HANDLE_VALUE;*/
 		m_hThreadDownload = INVALID_HANDLE_VALUE;
 		m_hThreadWatch = INVALID_HANDLE_VALUE;
-		m_nThreadID = -1;
+		/*m_nThreadID = -1;*/
 		m_bIsClosed = true;
 	}
 
 	~CClientController() {
-		WaitForSingleObject(m_hThread, 100);
+		/*WaitForSingleObject(m_hThread, 100);*/
 	}
 
-	void threadFunc();
+	/*void threadFunc();
 
-	static unsigned __stdcall threadEntry(void* arg);
+	static unsigned __stdcall threadEntry(void* arg);*/
 
 	static void releaseInstance();
 	
-	LRESULT OnShowStatus(UINT nMsg, WPARAM wParam, LPARAM lParam);
-	LRESULT OnShowWatcher(UINT nMsg, WPARAM wParam, LPARAM lParam);
+	/*LRESULT OnShowStatus(UINT nMsg, WPARAM wParam, LPARAM lParam);
+	LRESULT OnShowWatcher(UINT nMsg, WPARAM wParam, LPARAM lParam);*/
 
 private:
 	typedef struct MsgInfo {
@@ -117,17 +116,17 @@ private:
 		}
 
 	}MSGINFO;
-	typedef LRESULT(CClientController::* MSGFUNC)(UINT nMsg,
+	/*typedef LRESULT(CClientController::* MSGFUNC)(UINT nMsg,
 		WPARAM wParam, LPARAM lParam);
-	static std::map<UINT, MSGFUNC>m_mapFunc;
+	static std::map<UINT, MSGFUNC>m_mapFunc;*/
 	
 	CRemoteClientDlg m_remoteDlg;
 	CWatchDialog m_watchDlg;
 	CStatusDlg m_statusDlg;
-	HANDLE m_hThread;
+	/*HANDLE m_hThread;*/
 	HANDLE m_hThreadDownload;
 	HANDLE m_hThreadWatch;
-	unsigned m_nThreadID;
+	/*unsigned m_nThreadID;*/
 	//下载文件的远程路径
 	CString m_strRemote;
 	//下载文件的本地保存路径

@@ -8141,7 +8141,7 @@ b 请求控制客户端
 <XPD:REF name="DiagramOwner">pwPgbuh3nE2Wx8kamM48ngAA</XPD:REF>
 <XPD:OBJ name="DiagramView" type="UMLClassDiagramView" guid="H+xhw97tN0GxJfnFYzHCDwAA">
 <XPD:REF name="Diagram">BAECQcfhCEaDzMsi4XG6bgAA</XPD:REF>
-<XPD:ATTR name="#OwnedViews" type="integer">26</XPD:ATTR>
+<XPD:ATTR name="#OwnedViews" type="integer">27</XPD:ATTR>
 <XPD:OBJ name="OwnedViews[0]" type="UMLClassView" guid="RWJDTNDFtU63Ak8Ke3sKyAAA">
 <XPD:ATTR name="LineColor" type="string">clMaroon</XPD:ATTR>
 <XPD:ATTR name="FillColor" type="string">$00B9FFFF</XPD:ATTR>
@@ -9246,6 +9246,37 @@ b 请求控制客户端
 <XPD:ATTR name="Alpha" type="real">-1.5707963267949</XPD:ATTR>
 <XPD:ATTR name="Distance" type="real">15</XPD:ATTR>
 <XPD:REF name="Model">JUu78nwlpUWBSHsb5DPljAAA</XPD:REF>
+</XPD:OBJ>
+</XPD:OBJ>
+<XPD:OBJ name="OwnedViews[26]" type="UMLClassView" guid="wBpygdfZ4UytnRpTU3X8YAAA">
+<XPD:ATTR name="LineColor" type="string">clMaroon</XPD:ATTR>
+<XPD:ATTR name="FillColor" type="string">$00B9FFFF</XPD:ATTR>
+<XPD:ATTR name="Left" type="integer">1552</XPD:ATTR>
+<XPD:ATTR name="Top" type="integer">264</XPD:ATTR>
+<XPD:ATTR name="Width" type="integer">98</XPD:ATTR>
+<XPD:ATTR name="Height" type="integer">108</XPD:ATTR>
+<XPD:REF name="Model">+YnD3rSwm06jTW3cs3cXwwAA</XPD:REF>
+<XPD:OBJ name="NameCompartment" type="UMLNameCompartmentView" guid="mLWv+EpYrkafMXi7a7T1aQAA">
+<XPD:OBJ name="NameLabel" type="LabelView" guid="AJvhHZgAlUWjM5cXaoKx8gAA">
+<XPD:ATTR name="FontStyle" type="integer">1</XPD:ATTR>
+<XPD:ATTR name="Text" type="string">CClientControl</XPD:ATTR>
+</XPD:OBJ>
+<XPD:OBJ name="StereotypeLabel" type="LabelView" guid="2NoJtwyC70mfA2z93wY8OQAA">
+<XPD:ATTR name="Visible" type="boolean">False</XPD:ATTR>
+</XPD:OBJ>
+<XPD:OBJ name="PropertyLabel" type="LabelView" guid="mS3ezWp2hUm2mly15vtImgAA">
+<XPD:ATTR name="Visible" type="boolean">False</XPD:ATTR>
+</XPD:OBJ>
+</XPD:OBJ>
+<XPD:OBJ name="AttributeCompartment" type="UMLAttributeCompartmentView" guid="kWbqptsXBkmVCRMucTygGgAA">
+<XPD:REF name="Model">+YnD3rSwm06jTW3cs3cXwwAA</XPD:REF>
+</XPD:OBJ>
+<XPD:OBJ name="OperationCompartment" type="UMLOperationCompartmentView" guid="jk9IIY0Rq0OY1xBBRPat/wAA">
+<XPD:REF name="Model">+YnD3rSwm06jTW3cs3cXwwAA</XPD:REF>
+</XPD:OBJ>
+<XPD:OBJ name="TemplateParameterCompartment" type="UMLTemplateParameterCompartmentView" guid="7y8iFrbvMkizKxUywaP2qAAA">
+<XPD:ATTR name="Visible" type="boolean">False</XPD:ATTR>
+<XPD:REF name="Model">+YnD3rSwm06jTW3cs3cXwwAA</XPD:REF>
 </XPD:OBJ>
 </XPD:OBJ>
 </XPD:OBJ>
@@ -10741,6 +10772,32 @@ b 请求控制客户端
 <XPD:OBJ name="OwnedElements[33]" type="UMLClass" guid="+YnD3rSwm06jTW3cs3cXwwAA">
 <XPD:ATTR name="Name" type="string">CClientControl</XPD:ATTR>
 <XPD:REF name="Namespace">pwPgbuh3nE2Wx8kamM48ngAA</XPD:REF>
+<XPD:ATTR name="#Views" type="integer">4</XPD:ATTR>
+<XPD:REF name="Views[0]">wBpygdfZ4UytnRpTU3X8YAAA</XPD:REF>
+<XPD:REF name="Views[1]">kWbqptsXBkmVCRMucTygGgAA</XPD:REF>
+<XPD:REF name="Views[2]">jk9IIY0Rq0OY1xBBRPat/wAA</XPD:REF>
+<XPD:REF name="Views[3]">7y8iFrbvMkizKxUywaP2qAAA</XPD:REF>
+<XPD:ATTR name="#Operations" type="integer">5</XPD:ATTR>
+<XPD:OBJ name="Operations[0]" type="UMLOperation" guid="mTzEFRKv2UuMY2wY2EIGxQAA">
+<XPD:ATTR name="Name" type="string">InitController</XPD:ATTR>
+<XPD:REF name="Owner">+YnD3rSwm06jTW3cs3cXwwAA</XPD:REF>
+</XPD:OBJ>
+<XPD:OBJ name="Operations[1]" type="UMLOperation" guid="tv4HbMZJF0ahHFuT5wQ+/AAA">
+<XPD:ATTR name="Name" type="string">Invoke</XPD:ATTR>
+<XPD:REF name="Owner">+YnD3rSwm06jTW3cs3cXwwAA</XPD:REF>
+</XPD:OBJ>
+<XPD:OBJ name="Operations[2]" type="UMLOperation" guid="lVXxLxSLqEyf+OG809uktwAA">
+<XPD:ATTR name="Name" type="string">StartWatch</XPD:ATTR>
+<XPD:REF name="Owner">+YnD3rSwm06jTW3cs3cXwwAA</XPD:REF>
+</XPD:OBJ>
+<XPD:OBJ name="Operations[3]" type="UMLOperation" guid="TllKTy56i02O6K+/1F3jBAAA">
+<XPD:ATTR name="Name" type="string">ShowStatusDlg</XPD:ATTR>
+<XPD:REF name="Owner">+YnD3rSwm06jTW3cs3cXwwAA</XPD:REF>
+</XPD:OBJ>
+<XPD:OBJ name="Operations[4]" type="UMLOperation" guid="4LxdYoy3vUy1CqmKAJXqdgAA">
+<XPD:ATTR name="Name" type="string">threadMsgProc</XPD:ATTR>
+<XPD:REF name="Owner">+YnD3rSwm06jTW3cs3cXwwAA</XPD:REF>
+</XPD:OBJ>
 <XPD:ATTR name="#Instances" type="integer">1</XPD:ATTR>
 <XPD:REF name="Instances[0]">aLfUdyJWMkKilb2swQ+8IgAA</XPD:REF>
 </XPD:OBJ>
@@ -13902,7 +13959,7 @@ b 请求控制客户端
 <XPD:ATTR name="Left" type="integer">1260</XPD:ATTR>
 <XPD:ATTR name="Top" type="integer">913</XPD:ATTR>
 <XPD:ATTR name="Width" type="integer">14</XPD:ATTR>
-<XPD:ATTR name="Height" type="integer">460</XPD:ATTR>
+<XPD:ATTR name="Height" type="integer">336</XPD:ATTR>
 </XPD:OBJ>
 </XPD:OBJ>
 <XPD:OBJ name="OwnedViews[35]" type="UMLSeqStimulusView" guid="a0H5ebHkm0avWMJz2b7BIAAA">
@@ -14047,7 +14104,7 @@ b 请求控制客户端
 <XPD:ATTR name="Left" type="integer">1141</XPD:ATTR>
 <XPD:ATTR name="Top" type="integer">1208</XPD:ATTR>
 <XPD:ATTR name="Width" type="integer">14</XPD:ATTR>
-<XPD:ATTR name="Height" type="integer">793</XPD:ATTR>
+<XPD:ATTR name="Height" type="integer">429</XPD:ATTR>
 </XPD:OBJ>
 </XPD:OBJ>
 <XPD:OBJ name="OwnedViews[39]" type="UMLSeqStimulusView" guid="nbtSNJTjqE6F5KzXgiQuqgAA">
@@ -14083,7 +14140,7 @@ b 请求控制客户端
 <XPD:ATTR name="Left" type="integer">1148</XPD:ATTR>
 <XPD:ATTR name="Top" type="integer">1284</XPD:ATTR>
 <XPD:ATTR name="Width" type="integer">14</XPD:ATTR>
-<XPD:ATTR name="Height" type="integer">497</XPD:ATTR>
+<XPD:ATTR name="Height" type="integer">321</XPD:ATTR>
 </XPD:OBJ>
 </XPD:OBJ>
 <XPD:OBJ name="OwnedViews[40]" type="UMLSeqStimulusView" guid="WFqtH43XyEiOMphwOiyNkAAA">

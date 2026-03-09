@@ -5,7 +5,7 @@
 #pragma once
 #include <wtypes.h>
 #include "StatusDlg.h"
-
+#include"ClientSocket.h"
 #ifndef WM_SEND_PACK_ACK
 #define WM_SEND_PACK_ACK (WM_USER+2) //应答
 #endif
@@ -30,7 +30,15 @@ public:
 private:
 	HTREEITEM m_hTreeSelected;
 	bool m_isClosed;//监视是否关闭
+	FILE* m_pFile;
 private:
+	void InitUIData();
+	
+	void str2Tree(CPacket& head);
+	void UpdataFileInfo(CPacket& head);
+	void UpdateDownloadFile(CPacket& head, CString& strLocal);
+	void DealCommad(WPARAM wParam, LPARAM lParam);
+
 	void LoadFileCurrent();
 	void LoadFileInfo();
 	CString GetPath(HTREEITEM hTree);
@@ -40,7 +48,7 @@ private:
 	// 实现
 protected:
 	HICON m_hIcon;
-	CStatusDlg m_dlgStatus;
+	CStatusDlg m_statusDlg;
 
 	// 生成的消息映射函数
 	virtual BOOL OnInitDialog();
