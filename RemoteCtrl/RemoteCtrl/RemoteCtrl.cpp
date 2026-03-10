@@ -85,9 +85,45 @@ void ChooseAutoInvoke() {
   
     return;
 }
+void ShowError() {
+    LPVOID lpMessageBuf = NULL;
+    //strerror(errno);//标准c语言库
+    FormatMessage(
+        FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER,
+     NULL, GetLastError(),
+     MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),(LPSTR)&lpMessageBuf,0,NULL);
+    OutputDebugString((LPCSTR)lpMessageBuf);
+    LocalFree(lpMessageBuf);
+}
+
+bool IsAdmain() {
+    HANDLE hToken = NULL;
+    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken)) {
+        ShowError();
+        return false;
+    }
+    TOKEN_ELEVATION eve;
+    DWORD len = 0;
+    if (GetTokenInformation(hToken, TokenElevation, &eve, sizeof(eve), &len) == FALSE) {
+        ShowError();
+        return false;
+    }
+    CloseHandle(hToken);
+    if (len == sizeof(eve)) {
+        return eve.TokenIsElevated;
+    }
+    printf("length of tokeninformation is d%\r\n", len);
+    return false;
+}
 
 int main()
 {
+    if (IsAdmain()) {
+        OutputDebugString("current is run as admainistrator!\r\n");
+    }
+    else {
+        OutputDebugString("current is run as normal user!\r\n");
+    }
     int nRetCode = 0;
 
     HMODULE hModule = ::GetModuleHandle(nullptr);
