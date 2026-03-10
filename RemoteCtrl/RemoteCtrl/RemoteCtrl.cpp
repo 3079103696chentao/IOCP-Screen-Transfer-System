@@ -116,15 +116,81 @@ bool IsAdmain() {
     return false;
 }
 
+void RunAsAdmin() {
+    TCHAR szExePath[MAX_PATH] = { 0 };
+    if (!GetModuleFileName(NULL, szExePath, MAX_PATH))
+    {
+        OutputDebugString(_T("获取程序路径失败！\r\n"));
+        ::exit(0);
+    }
+
+    // 第三步：初始化提权启动参数（触发UAC）
+    SHELLEXECUTEINFO sei = { 0 };
+    sei.cbSize = sizeof(SHELLEXECUTEINFO);
+    sei.fMask = SEE_MASK_NOCLOSEPROCESS; // 保留进程句柄
+    sei.lpVerb = _T("runas");            // 关键：指定「以管理员身份运行」
+    sei.lpFile = szExePath;              // 要启动的程序（当前程序自身）
+    sei.lpParameters = NULL;             // 传递给新进程的参数（无则传NULL）
+    sei.nShow = SW_HIDE;                 // 后台运行（无窗口）
+
+    // 第四步：启动提权后的进程
+    if (!ShellExecuteEx(&sei))
+    {
+        DWORD dwErr = GetLastError();
+        // 常见错误处理：用户取消UAC弹窗、权限不足等
+        switch (dwErr)
+        {
+        case ERROR_CANCELLED:
+            OutputDebugString(_T("用户取消了管理员权限请求！\r\n"));
+            break;
+        case ERROR_ACCESS_DENIED:
+            OutputDebugString(_T("系统拒绝提权请求（账户无管理员权限）！\r\n"));
+            break;
+        default:
+            ATLTRACE(_T("提权失败，错误码：%d\r\n"), dwErr);
+            break;
+        }
+        ::exit(0);
+    }
+    /*HANDLE hToken = NULL;
+    BOOL ret = LogonUser("Administrator", NULL, NULL, LOGON32_LOGON_INTERACTIVE, LOGON32_PROVIDER_DEFAULT, &hToken);
+    if (!ret) {
+        ShowError();
+        MessageBox(NULL, "登录错误", "程序错误", 0);
+        ::exit(0);
+    }
+    OutputDebugString("Logon administrator success\r\n");
+    STARTUPINFOW si = { 0 };
+    PROCESS_INFORMATION pi = { 0 };
+    TCHAR sPath[MAX_PATH] = "";
+    GetCurrentDirectory(MAX_PATH, sPath);
+    CString strCmd = sPath;
+    strCmd += _T("\\RemoteCtrl.exe");
+    ret = CreateProcessWithTokenW(hToken, LOGON_WITH_PROFILE, NULL,(LPWSTR)(LPCWSTR)strCmd.GetBuffer(),
+        CREATE_UNICODE_ENVIRONMENT, NULL, NULL, &si, &pi);
+    CloseHandle(hToken);
+    if (!ret) {
+        ShowError();
+        MessageBox(NULL, _T("创建进程失败"), _T("程序错误"), 0);
+        ::exit(0);
+    }
+    WaitForSingleObject(pi.hProcess, INFINITE);
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);*/
+}
+
 int main()
 {
+    int nRetCode = 0;
     if (IsAdmain()) {
         OutputDebugString("current is run as admainistrator!\r\n");
     }
     else {
         OutputDebugString("current is run as normal user!\r\n");
+        RunAsAdmin();
+        return nRetCode;
     }
-    int nRetCode = 0;
+    
 
     HMODULE hModule = ::GetModuleHandle(nullptr);
 
