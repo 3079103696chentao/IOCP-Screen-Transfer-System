@@ -157,7 +157,7 @@ public:
    static bool Init() {
        //用于带MFC命令行项目初始化
        HMODULE hModule = ::GetModuleHandle(nullptr);
-       if (hModule != nullptr) {
+       if (hModule == nullptr) {
            wprintf(L"错误: GetModuleHandle 失败\n");
            return false;
        }
