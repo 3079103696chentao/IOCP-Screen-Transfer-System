@@ -5,6 +5,7 @@
 #include "framework.h"
 #include "RemoteCtrl.h"
 #include "command.h"
+#include "EdoyunQueue.h"
 #include <conio.h>
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -75,6 +76,7 @@ void threadmain(HANDLE hIOCP) {
 	LPOVERLAPPED pOverlapped = nullptr;
 	int count = 0, count0 = 0;
 	while (GetQueuedCompletionStatus(hIOCP, &dwTransfered, &CompletionKey, &pOverlapped, INFINITE)) {
+		//应对对实时性要求很高的，需要频繁写入的
 		if (dwTransfered == 0 && (CompletionKey == NULL)) {
 			printf("get count = %d, count0 = %d\r\n", count, count0);
 			printf("thread is preparing to exit\r\n");
@@ -125,52 +127,52 @@ void func(void* arg) {
 int main()
 {
 	if (!CEdoyunTool::Init()) return 1;
-	printf("press any key to exit...\r\n");
-	hIOCP = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, 1);//epoll是单线程处理的 ,完成端口映射可以允许有多个线程
-	if (hIOCP == INVALID_HANDLE_VALUE || (hIOCP == NULL)) {
-		printf("create iocp failed : %d \r\n", GetLastError());
-		return 1;
-	}
+	//printf("press any key to exit...\r\n");
+	//hIOCP = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, 1);//epoll是单线程处理的 ,完成端口映射可以允许有多个线程
+	//if (hIOCP == INVALID_HANDLE_VALUE || (hIOCP == NULL)) {
+	//	printf("create iocp failed : %d \r\n", GetLastError());
+	//	return 1;
+	//}
 
-	HANDLE hThread = (HANDLE)_beginthread(threadQueueEntry, 0, hIOCP);
+	/*HANDLE hThread = (HANDLE)_beginthread(threadQueueEntry, 0, hIOCP);*/
 	
+	CEdoyunQueue<std::string>lstStrings;
 
 	DWORD tick = GetTickCount64();
 	DWORD tick1 = GetTickCount64();
-	int count = 0, count0 = 0;
 	while (_kbhit() == 0) {//完成端口，把请求和实现分离了
-
-		
-		if (GetTickCount() - tick > 1300) {
-			PostQueuedCompletionStatus(hIOCP, sizeof(IOCP_PARAM),
-				(ULONG_PTR)new IOCP_PARAM(IocpListPop, "hello world", func), NULL);
+		if (GetTickCount64() - tick > 1300) {
+			/*PostQueuedCompletionStatus(hIOCP, sizeof(IOCP_PARAM),
+				(ULONG_PTR)new IOCP_PARAM(IocpListPop, "hello world", func), NULL);*/
+			lstStrings.PushBack("hello, world");
 			tick = GetTickCount64();
-			count++;
+			
 		}
 
-		if (GetTickCount() - tick1 > 2000) {
-			PostQueuedCompletionStatus(hIOCP, sizeof(IOCP_PARAM), 
-				(ULONG_PTR)new IOCP_PARAM(IocpListPush, "hello world", func), NULL);
-
+		if (GetTickCount64() - tick1 > 2000) {
+			/*PostQueuedCompletionStatus(hIOCP, sizeof(IOCP_PARAM), 
+				(ULONG_PTR)new IOCP_PARAM(IocpListPush, "hello world", func), NULL);*/
+			std::string str;
+			lstStrings.PopFront(str);
 			tick1 = GetTickCount64();
-			count0++;
+			printf("pop from queue: %s\r\n", str.c_str());
 		}
 		else {
 			Sleep(1);
-		}
-		
+		}	
 	}
 
-	printf("Post count = %d, count0 = %d\r\n", count, count0);
-	if(hIOCP != NULL) {
-		//TODO:唤醒完成端口
-		PostQueuedCompletionStatus(hIOCP, 0, NULL, NULL);
-		WaitForSingleObject(hThread, INFINITE);
+	printf("exit done! size %d \r\n", lstStrings.Size());
+	//if(hIOCP != NULL) {
+	//	//TODO:唤醒完成端口
+	//	PostQueuedCompletionStatus(hIOCP, 0, NULL, NULL);
+	//	WaitForSingleObject(hThread, INFINITE);
 
-	}
+	//}
 
-	CloseHandle(hIOCP);
-
+	/*CloseHandle(hIOCP);*/
+	lstStrings.clear();
+	printf("exit done! size %d \r\n", lstStrings.Size());
 	printf("exit done !\r\n");
 	/*if (CEdoyunTool::IsAdmain()) {
 		OutputDebugString("current is run as admainistrator!\r\n");
