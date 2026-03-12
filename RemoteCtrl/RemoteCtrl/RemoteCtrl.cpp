@@ -68,44 +68,52 @@ typedef struct IocpParam {
 }IOCP_PARAM;
 
 HANDLE hIOCP = INVALID_HANDLE_VALUE;//IO Complete Port
-void threadQueueEntry(HANDLE hIOCP) {
-
+void threadmain(HANDLE hIOCP) {
 	std::list<std::string>lstString;
 	DWORD dwTransfered = 0;
 	ULONG_PTR CompletionKey = 0;
-	LPOVERLAPPED* pOverlapped = nullptr;
-	while(GetQueuedCompletionStatus(hIOCP, &dwTransfered, &CompletionKey, pOverlapped, INFINITE)){
+	LPOVERLAPPED pOverlapped = nullptr;
+	int count = 0, count0 = 0;
+	while (GetQueuedCompletionStatus(hIOCP, &dwTransfered, &CompletionKey, &pOverlapped, INFINITE)) {
 		if (dwTransfered == 0 && (CompletionKey == NULL)) {
-			printf("thread is prepare to exit");
+			printf("get count = %d, count0 = %d\r\n", count, count0);
+			printf("thread is preparing to exit\r\n");
 			break;
 		}
 		IOCP_PARAM* pParam = (IOCP_PARAM*)CompletionKey;
 		if (pParam->nOperator == IocpListPush) {
 			lstString.push_back(pParam->strData);
+			printf("push_back success\r\n");
+			count0++;
 		}
 		else if (pParam->nOperator == IocpListPop) {
 			std::string* pStr = NULL;
 			if (lstString.size() > 0) {
-			    pStr = new std::string(lstString.front());
+				pStr = new std::string(lstString.front());
 				lstString.pop_front();
 			}
 			if (pParam->cbFunc) {
 				pParam->cbFunc(pStr);
-			}	
+			}
+			count++;
 		}
 		else if (pParam->nOperator == IocpListEmpty) {
 			lstString.clear();
 		}
 		delete pParam;
 	}
-
-
-	_endthread();
+}
+void threadQueueEntry(HANDLE hIOCP) {
+	threadmain(hIOCP);
+	_endthread();//代码到此为止，会导致本地对象无法调用析构，从而使内存发生泄漏
+	/*清理 threadQueueEntry 线程内的 CRT 资源（比如 std::list 依赖的 CRT 内存、printf 的 I/O 缓冲区等）；
+安全终止线程，释放线程内核对象；
+避免直接使用 ExitThread 导致的 CRT 资源泄漏。*/
 }
 
 void func(void* arg) {
 	std::string* pstr = (std::string*)arg;
-	if (pstr != NULL) {
+	if (pstr != NULL) { 
 		printf("pop from list:%s\r\n", pstr->c_str());
 		delete pstr;
 	}
@@ -119,26 +127,45 @@ int main()
 	if (!CEdoyunTool::Init()) return 1;
 	printf("press any key to exit...\r\n");
 	hIOCP = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, 1);//epoll是单线程处理的 ,完成端口映射可以允许有多个线程
+	if (hIOCP == INVALID_HANDLE_VALUE || (hIOCP == NULL)) {
+		printf("create iocp failed : %d \r\n", GetLastError());
+		return 1;
+	}
+
 	HANDLE hThread = (HANDLE)_beginthread(threadQueueEntry, 0, hIOCP);
 	
 
 	DWORD tick = GetTickCount64();
-	while (_kbhit() != 0) {//完成端口，把请求和实现分离了
+	DWORD tick1 = GetTickCount64();
+	int count = 0, count0 = 0;
+	while (_kbhit() == 0) {//完成端口，把请求和实现分离了
 
+		
 		if (GetTickCount() - tick > 1300) {
-			PostQueuedCompletionStatus(hIOCP, sizeof(IOCP_PARAM), (ULONG_PTR)new IOCP_PARAM(IocpListPop, "hello world"), NULL);
+			PostQueuedCompletionStatus(hIOCP, sizeof(IOCP_PARAM),
+				(ULONG_PTR)new IOCP_PARAM(IocpListPop, "hello world", func), NULL);
+			tick = GetTickCount64();
+			count++;
 		}
 
-		if (GetTickCount() - tick > 2000) {
-			PostQueuedCompletionStatus(hIOCP, sizeof(IOCP_PARAM), (ULONG_PTR)new IOCP_PARAM(IocpListPush, "hello world"), NULL);
-			tick = GetTickCount64();
+		if (GetTickCount() - tick1 > 2000) {
+			PostQueuedCompletionStatus(hIOCP, sizeof(IOCP_PARAM), 
+				(ULONG_PTR)new IOCP_PARAM(IocpListPush, "hello world", func), NULL);
+
+			tick1 = GetTickCount64();
+			count0++;
 		}
-		Sleep(1);
+		else {
+			Sleep(1);
+		}
+		
 	}
+
+	printf("Post count = %d, count0 = %d\r\n", count, count0);
 	if(hIOCP != NULL) {
 		//TODO:唤醒完成端口
 		PostQueuedCompletionStatus(hIOCP, 0, NULL, NULL);
-		WaitForSingleObject(hIOCP, INFINITE);
+		WaitForSingleObject(hThread, INFINITE);
 
 	}
 
