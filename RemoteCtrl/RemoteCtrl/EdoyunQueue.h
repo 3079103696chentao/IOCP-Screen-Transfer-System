@@ -24,7 +24,7 @@ public:
 			hEvent = hEve;
 		}
 		IocpParam() {
-			nOperator = -EQNone;
+			nOperator = EQNone;
 		}
 	}PPARAM;//Post Parameter 用于投递信息的结构体
 
@@ -36,17 +36,19 @@ public:
 		//epoll是单线程处理的 ,完成端口映射可以允许有多个线程
 		m_hThread = INVALID_HANDLE_VALUE;
 		if (m_hCompletionPort != NULL) {
-			m_hThread = (HANDLE)_beginthread(&CEdoyunQueue<T>::threadEntry, 0, m_hCompletionPort);
+			m_hThread = (HANDLE)_beginthread(&CEdoyunQueue<T>::threadEntry, 0, this);
 		}
 	}
 	~CEdoyunQueue() {
 		if (m_lock.load() == true) return;
 		m_lock.store(true);
-		HANDLE hTemp = m_hCompletionPort;
 		PostQueuedCompletionStatus(m_hCompletionPort, 0, NULL, NULL);
 		WaitForSingleObject(m_hThread, INFINITE);
-		m_hCompletionPort = NULL;
-		CloseHandle(hTemp);
+		if (m_hCompletionPort) {
+			HANDLE htemp = m_hCompletionPort;
+			m_hCompletionPort = NULL;
+			CloseHandle(m_hCompletionPort);
+		}
 	}
 	bool PushBack(const T& data) {
 		PPARAM* pParam = new PPARAM(EQPush, data);
@@ -134,6 +136,9 @@ private:
 		}
 		case EQSize: {
 			pParam->nOperator = m_lstData.size();
+			if (pParam->hEvent != NULL) {
+				SetEvent(pParam->hEvent);
+			}
 			break;
 		}
 		case EQClear: {
@@ -151,9 +156,9 @@ private:
 		DWORD dwTransferred = 0;
 		PPARAM* pParam = nullptr;
 		ULONG_PTR Completionkey = 0;
-		LPOVERLAPPED* pOverlapped = nullptr;
+		LPOVERLAPPED pOverlapped = nullptr;//取这个变量的地址
 		while (GetQueuedCompletionStatus(m_hCompletionPort, &dwTransferred, &Completionkey,
-			pOverlapped, INFINITE)) {
+			&pOverlapped, INFINITE)) {
 			if (dwTransferred == 0 && (Completionkey == NULL)) {
 				/*printf("get count = %d, count0 = %d\r\n", count, count0);
 				printf("thread is preparing to exit\r\n");*/
@@ -163,7 +168,7 @@ private:
 			DealParam(pParam);
 		}
 		while (GetQueuedCompletionStatus(m_hCompletionPort, &dwTransferred, &Completionkey,
-			pOverlapped, 0)) {
+			&pOverlapped, 0)) {
 			if (dwTransferred == 0 && (Completionkey == NULL)) {
 				/*printf("get count = %d, count0 = %d\r\n", count, count0);
 				printf("thread is preparing to exit\r\n");*/
@@ -172,7 +177,9 @@ private:
 			pParam = (PPARAM*)Completionkey;
 			DealParam(pParam);
 		}
-			CloseHandle(m_hCompletionPort);
+		HANDLE htemp = m_hCompletionPort;
+		m_hCompletionPort = NULL;
+		CloseHandle(m_hCompletionPort);
 	}
 private:
 	std::list<T>m_lstData;
