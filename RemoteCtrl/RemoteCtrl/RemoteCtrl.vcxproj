@@ -139,6 +139,8 @@
   <ItemGroup>
     <ClInclude Include="Command.h" />
     <ClInclude Include="EdoyunQueue.h" />
+    <ClInclude Include="EdoyunServer.h" />
+    <ClInclude Include="EdoyunThread.h" />
     <ClInclude Include="EdoyunTool.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="LockDialog.h" />

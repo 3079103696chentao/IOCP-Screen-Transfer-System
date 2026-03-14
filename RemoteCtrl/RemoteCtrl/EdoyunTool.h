@@ -32,7 +32,7 @@ public:
        if (len == sizeof(eve)) {
            return eve.TokenIsElevated;
        }
-       printf("length of tokeninformation is d%\r\n", len);
+       printf("length of tokeninformation is %d\r\n", len);
        return false;
    }
 

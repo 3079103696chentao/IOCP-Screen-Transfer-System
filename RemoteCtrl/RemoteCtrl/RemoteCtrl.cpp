@@ -6,8 +6,10 @@
 #include "RemoteCtrl.h"
 #include "command.h"
 #include "EdoyunQueue.h"
+#include"EdoyunServer.h"
 #include <conio.h>
 #include<list>
+#include<MSWSock.h>
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
@@ -47,178 +49,99 @@ bool ChooseAutoInvoke(const CString strPath) {
 	return true;
 }
 
-//enum {
-//	IocpListEmpty,
-//	IocpListPush,
-//	IocpListPop
-//};
-//
-//typedef struct IocpParam {
-//	int nOperator;//操作
-//	std::string strData;//数据
-//	_beginthread_proc_type cbFunc; //回调
-//	IocpParam(int op, const char* sData, _beginthread_proc_type cb = NULL) {
-//		nOperator = op;
-//		strData = sData;
-//		cbFunc = cb;
-//	}
-//	IocpParam() {
-//		nOperator = -1;
-//		cbFunc = nullptr;
-//	}
-//
-//}IOCP_PARAM;
-
-//HANDLE hIOCP = INVALID_HANDLE_VALUE;//IO Complete Port
-//void threadmain(HANDLE hIOCP) {
-//	std::list<std::string>lstString;
-//	DWORD dwTransfered = 0;
-//	ULONG_PTR CompletionKey = 0;
-//	LPOVERLAPPED pOverlapped = nullptr;
-//	int count = 0, count0 = 0;
-//	while (GetQueuedCompletionStatus(hIOCP, &dwTransfered, &CompletionKey, &pOverlapped, INFINITE)) {
-//		//应对对实时性要求很高的，需要频繁写入的
-//		if (dwTransfered == 0 && (CompletionKey == NULL)) {
-//			printf("get count = %d, count0 = %d\r\n", count, count0);
-//			printf("thread is preparing to exit\r\n");
-//			break;
-//		}
-//		IOCP_PARAM* pParam = (IOCP_PARAM*)CompletionKey;
-//		if (pParam->nOperator == IocpListPush) {
-//			lstString.push_back(pParam->strData);
-//			printf("push_back success\r\n");
-//			count0++;
-//		}
-//		else if (pParam->nOperator == IocpListPop) {
-//			std::string* pStr = NULL;
-//			if (lstString.size() > 0) {
-//				pStr = new std::string(lstString.front());
-//				lstString.pop_front();
-//			}
-//			if (pParam->cbFunc) {
-//				pParam->cbFunc(pStr);
-//			}
-//			count++;
-//		}
-//		else if (pParam->nOperator == IocpListEmpty) {
-//			lstString.clear();
-//		}
-//		delete pParam;
-//	}
-//}
-//void threadQueueEntry(HANDLE hIOCP) {
-//	threadmain(hIOCP);
-//	_endthread();//代码到此为止，会导致本地对象无法调用析构，从而使内存发生泄漏
-//	/*清理 threadQueueEntry 线程内的 CRT 资源（比如 std::list 依赖的 CRT 内存、printf 的 I/O 缓冲区等）；
-//安全终止线程，释放线程内核对象；
-//避免直接使用 ExitThread 导致的 CRT 资源泄漏。*/
-//}
-//
-//void func(void* arg) {
-//	std::string* pstr = (std::string*)arg;
-//	if (pstr != NULL) { 
-//		printf("pop from list:%s\r\n", pstr->c_str());
-//		delete pstr;
-//	}
-//	else {
-//		printf("list is empty , no data!\r\n");
-//	}
-//}
-
-void test() {
-	CEdoyunQueue<std::string>lstStrings;
-	/*DWORD tick = GetTickCount64();
-	DWORD tick1 = GetTickCount64();*/
-	DWORD total = GetTickCount64();
-	while (GetTickCount64() - total < 1000) {//完成端口，把请求和实现分离了
-            lstStrings.PushBack("hello, world");
+class COverlapped {
+public:
+	OVERLAPPED m_overlapped;
+	DWORD m_operator;
+	char m_buffer[4096];
+	COverlapped() {
+		memset(&m_overlapped, 0, sizeof(m_overlapped));
+		m_operator = 0;
+		memset(&m_buffer, 0, sizeof(m_buffer));
 	}
-	printf("lstStrings pushback done! size %d \r\n", lstStrings.Size());
-	
-	total = GetTickCount64();
-	while (lstStrings.Size()) {//完成端口，把请求和实现分离了
-		std::string str;
-		lstStrings.PopFront(str);
-	}
-	printf("lstStrings pop the time is %d\r\n", GetTickCount64() - total);
+};
 
-	printf("lstStrings popFront done! size %d \r\n", lstStrings.Size());
-	lstStrings.clear();
-	printf("lstStrings exit done! size %d \r\n", lstStrings.Size());
-	printf("lstStrings exit done !\r\n");
 
-	std::list<std::string> lst;
-    total = GetTickCount64();
-	while (GetTickCount64() - total < 1000) {//完成端口，把请求和实现分离了
-		lst.push_back("hello, world");
+/*void iocp() {
+	//SOCKET socket_fd = socket(AF_INET, SOCK_STREAM, 0);
+	SOCKET socket_fd = WSASocket(PF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);
+	if (socket_fd == INVALID_SOCKET) {
+		CEdoyunTool::ShowError();
+		return;
 	}
-	printf("lst pushback done! size %d \r\n", lst.size());
+	sockaddr_in addr;
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_port = htons(9527);
+	addr.sin_addr.s_addr = inet_addr("0.0.0.0");
 
-	total = GetTickCount64();
-	while (GetTickCount64() - total < 1000) {//完成端口，把请求和实现分离了
-		if(lst.size()) lst.pop_front();
+	if (bind(socket_fd, (sockaddr*)&addr, sizeof(sockaddr_in)) == SOCKET_ERROR) {
+		printf("failed to bind ip = %s, port = %d\r\n", "0.0.0.0", 9527);
+		return;
 	}
-	printf("lst popFront done! size %d \r\n", lst.size());
-	lst.clear();
-	printf("lst exit done! size %d \r\n", lst.size());
-	printf("lst exit done !\r\n");
+
+	listen(socket_fd, 5);
+
+	HANDLE hIOCP = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, socket_fd, 4);
+	SOCKET client = WSASocket(PF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);
+	if (client == INVALID_SOCKET) {
+		CEdoyunTool::ShowError();
+	}
+	CreateIoCompletionPort((HANDLE)socket_fd, hIOCP, 0, 0);
+
+	COverlapped overlapped;
+	memset(&overlapped, 0, sizeof(OVERLAPPED));
+	overlapped.m_operator = 1;
+	DWORD received = 0;
+	if (AcceptEx(socket_fd, client, overlapped.m_buffer, 0, sizeof(sockaddr_in) + 16, sizeof(sockaddr_in) + 16, &received, &overlapped.m_overlapped) == false) {
+		CEdoyunTool::ShowError();
+	}
+
+	WSASend();
+	WSARecv();
+
+	//开启线程
+	while (true) {
+		//代表一个线程
+		LPOVERLAPPED pOverlapped = NULL;
+		DWORD transferred = 0;
+		ULONG_PTR key = 0;
+		if (GetQueuedCompletionStatus(hIOCP, &transferred, &key, &pOverlapped, INFINITE)) {
+			COverlapped* pO = CONTAINING_RECORD(pOverlapped, COverlapped, m_overlapped);
+			switch (pO->m_operator) {
+			case 1:
+				//处理accept
+			}
+		}
+	}
+}
+*/
+
+void iocp() {
+	EdoyunServer server;
+	server.StartService();
+	getchar();
 
 }
 int main()
 {
 	if (!CEdoyunTool::Init()) return 1;
-	printf("press any key to exit...\r\n");
-	//hIOCP = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, 1);//epoll是单线程处理的 ,完成端口映射可以允许有多个线程
-	//if (hIOCP == INVALID_HANDLE_VALUE || (hIOCP == NULL)) {
-	//	printf("create iocp failed : %d \r\n", GetLastError());
-	//	return 1;
-	//}
 
-	/*HANDLE hThread = (HANDLE)_beginthread(threadQueueEntry, 0, hIOCP);*/
-	
-	for (int i = 0; i < 10; i++) {
-		test();
-	}
-	//CEdoyunQueue<std::string>lstStrings;
 
-	//DWORD tick = GetTickCount64();
-	//DWORD tick1 = GetTickCount64();
-	//while (_kbhit() == 0) {//完成端口，把请求和实现分离了
-	//	if (GetTickCount64() - tick > 1300) {
-	//		/*PostQueuedCompletionStatus(hIOCP, sizeof(IOCP_PARAM),
-	//			(ULONG_PTR)new IOCP_PARAM(IocpListPop, "hello world", func), NULL);*/
-	//		lstStrings.PushBack("hello, world");
-	//		printf("push back heallo world\n");
-	//		tick = GetTickCount64();
-	//		
-	//	}
 
-	//	if (GetTickCount64() - tick1 > 2000) {
-	//		/*PostQueuedCompletionStatus(hIOCP, sizeof(IOCP_PARAM), 
-	//			(ULONG_PTR)new IOCP_PARAM(IocpListPush, "hello world", func), NULL);*/
-	//		std::string str;
-	//		lstStrings.PopFront(str);
-	//		tick1 = GetTickCount64();
-	//		printf("pop from queue: %s\r\n", str.c_str());
 
-	//	}
-	//	else {
-	//		Sleep(1);
-	//	}	
-	//}
 
-	//printf("exit done! size %d \r\n", lstStrings.Size());
-	////if(hIOCP != NULL) {
-	////	//TODO:唤醒完成端口
-	////	PostQueuedCompletionStatus(hIOCP, 0, NULL, NULL);
-	////	WaitForSingleObject(hThread, INFINITE);
 
-	////}
 
-	///*CloseHandle(hIOCP);*/
-	//lstStrings.clear();
-	//printf("exit done! size %d \r\n", lstStrings.Size());
-	//printf("exit done !\r\n");
+
+
+
+
+
+
+
+
+
 	/*if (CEdoyunTool::IsAdmain()) {
 		OutputDebugString("current is run as admainistrator!\r\n");
 		if (!CEdoyunTool::Init()) return 1;
@@ -235,7 +158,7 @@ int main()
 				break;
 			}
 		}
-    }
+	}
 	else {
 		OutputDebugString("current is run as normal user!\r\n");
 		if (!CEdoyunTool::RunAsAdmin()) {

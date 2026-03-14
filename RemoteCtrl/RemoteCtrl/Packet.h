@@ -1,6 +1,6 @@
 #pragma once
 #include"pch.h"
-
+#pragma pack(push, 1)
 class CPacket {
 public:
 	CPacket() :sHead(0), nLength(0), sCmd(0), sSum(0) {}
