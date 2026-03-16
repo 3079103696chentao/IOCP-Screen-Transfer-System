@@ -4,9 +4,11 @@ int EdoyunServer::threadIocp() {
 	DWORD transferred;
 	ULONG_PTR Completionkey;
 	OVERLAPPED* lpOverlapped;
-	if (GetQueuedCompletionStatus(m_hIOCP, &transferred, &Completionkey, &lpOverlapped, INFINITY)) {
-		if (transferred != 0 && Completionkey != 0) {
+	if (GetQueuedCompletionStatus(m_hIOCP, &transferred, &Completionkey, &lpOverlapped, INFINITE)) {
+		if (Completionkey != 0) {
 			EdoyunOverlapped* pOverlapped = CONTAINING_RECORD(lpOverlapped, EdoyunOverlapped, m_overlapped);
+			TRACE("pOverlapped->m_operator%d\r\n", pOverlapped->m_operator);
+			pOverlapped->m_server = this;
 			switch (pOverlapped->m_operator) {
 			case EAccept: {
 				ACCEPTOVERLAPPED* pAccept = (ACCEPTOVERLAPPED*)pOverlapped;

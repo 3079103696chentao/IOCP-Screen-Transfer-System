@@ -8,9 +8,10 @@ class ThreadFuncBase {};
 typedef int(ThreadFuncBase::* FUNCTYPE)();
 class ThreadWorker {
 public:
-	ThreadWorker():thiz(NULL), func(NULL){}
-	ThreadWorker(ThreadFuncBase* obj, FUNCTYPE f):thiz(obj),func(f) {}
+	ThreadWorker():thiz(nullptr), func(nullptr){}
+	ThreadWorker(void* obj, FUNCTYPE f):thiz((ThreadFuncBase*)obj),func(f) {}
 	ThreadWorker(const ThreadWorker& worker) {
+		
 		thiz = worker.thiz;
 		func = worker.func;
 	}
@@ -28,7 +29,8 @@ public:
 		}
 		return -1;
 	}
-	bool IsValid() const{
+	bool IsValid() const {
+		
 		return (thiz != nullptr) && (func != nullptr);
 	}
 private:
@@ -40,6 +42,7 @@ class EdoyunThread
 public:
 	EdoyunThread() {
 		m_hThread = NULL;
+		m_bStatus = false;
 	}
 	~EdoyunThread() {
 		Stop();
@@ -63,47 +66,57 @@ public:
 	bool Stop() {
 		if (!m_bStatus) return true;
 		m_bStatus = false;
-		bool ret = WaitForSingleObject(m_hThread, INFINITE) == WAIT_OBJECT_0;
-		//if (m_worker.load() == nullptr) {
-		//	::ThreadWorker* pWorker = m_worker.load();
-		//	m_worker.store(nullptr);
-			//delete pWorker;
-		//}
-		UpdateWorker(*m_worker);
-		return ret;
-		
+		DWORD ret = WaitForSingleObject(m_hThread, 1000);
+		if (ret == WAIT_TIMEOUT) TerminateThread(m_hThread, -1);
+		if(m_worker != nullptr) UpdateWorker(*m_worker);
+		return ret == WAIT_OBJECT_0;
 	}
-	void UpdateWorker(const ::ThreadWorker& worker = ::ThreadWorker()) {
-		if (!worker.IsValid()) {
-			m_worker.store(nullptr);
-			return;
-		}
-		if (m_worker.load() != nullptr) {
+	void UpdateWorker(const::ThreadWorker worker =::ThreadWorker()) {
+		if (m_worker.load() != nullptr && (m_worker.load() != &worker)) {
 			::ThreadWorker* pWorker = m_worker.load();
 			m_worker.store(nullptr);
 			delete pWorker;
 		}
+
+		if (m_worker.load() == &worker) return;
+		
+		if (!worker.IsValid()) {
+			m_worker.store(nullptr);
+			return;
+		}
+		
 		m_worker.store(new ::ThreadWorker(worker));
     }
 	//true表示空闲 false表示已经分配了工作
 	bool IsIdle() {
+		if (m_worker.load() == nullptr) {
+			return true;
+		}
 		return !m_worker.load()->IsValid();
 	}
 	
 private:
 	virtual void ThreadWorker() {
 		while (m_bStatus) {
+			if (m_worker.load() == NULL) {
+				Sleep(1);
+				continue;
+			}
 			::ThreadWorker worker = *m_worker.load();//这个函数返回的是临时对象，
 			//需要const T&或者右值引用才可以绑定到临时对象
 			if (worker.IsValid()) {
-				int ret = worker();//返回值小于0,则终止线程循环，大于零，则警告日志，等于0表示正常
-				if (ret != 0) {
-					CString str;
-					str.Format("thread found waring code %d\r\n", ret);
-					OutputDebugString(str);
-				}
-				if (ret < 0) {
-					m_worker.store(nullptr);
+				if (WaitForSingleObject(m_hThread, 0) == WAIT_TIMEOUT) {
+					int ret = worker();//返回值小于0,则终止线程循环，大于零，则警告日志，等于0表示正常
+					if (ret != 0) {
+						CString str;
+						str.Format("thread found waring code %d\r\n", ret);
+						OutputDebugString(str);
+					}
+					if (ret < 0) {
+						::ThreadWorker* pWorker = m_worker.load();
+						m_worker.store(nullptr);
+						delete pWorker;
+					}
 				}
 			}
 			else {
@@ -135,6 +148,10 @@ public:
 	EdoyunThreadPool() {}
 	~EdoyunThreadPool() {
 		Stop();
+		for (size_t i = 0; i < m_threads.size(); i++) {
+			delete m_threads[i];
+			m_threads[i] = nullptr;
+		}
 		m_threads.clear();
 	}
 	bool Invoke() {

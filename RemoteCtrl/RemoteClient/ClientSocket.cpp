@@ -195,7 +195,7 @@ void CClientSocket::SendPack(UINT nMsg, WPARAM wParam, LPARAM lParam)
 	while (m_socket != INVALID_SOCKET) {
 		size_t length = recv(m_socket, buffer + index, BUFFER_SIZE - index, 0);
 		TRACE("recv length = %d, index = %d\r\n", length, index);
-		if (length <= 0 && index <= 0) {
+		if ((long long)length <= 0 && (long long)index <= 0) {
 			CloseSocket();
 			break;
 		}

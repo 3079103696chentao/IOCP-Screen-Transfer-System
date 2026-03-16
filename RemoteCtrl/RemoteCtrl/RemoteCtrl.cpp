@@ -2,6 +2,8 @@
 
 
 #include "pch.h"
+
+#include<iostream>
 #include "framework.h"
 #include "RemoteCtrl.h"
 #include "command.h"
@@ -121,27 +123,12 @@ void iocp() {
 	EdoyunServer server;
 	server.StartService();
 	getchar();
-
 }
 int main()
 {
+	
 	if (!CEdoyunTool::Init()) return 1;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+	iocp();
 	/*if (CEdoyunTool::IsAdmain()) {
 		OutputDebugString("current is run as admainistrator!\r\n");
 		if (!CEdoyunTool::Init()) return 1;

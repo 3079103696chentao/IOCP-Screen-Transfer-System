@@ -206,8 +206,8 @@ void CRemoteClientDlg::InitUIData(){
 	SetIcon(m_hIcon, FALSE);		// 设置小图标
 	UpdateData();//将控件当前值保存到对应的成员变量
 	m_hTreeSelected = NULL;
-	m_server_address = 0xAC15418D;//远程电脑
-	//m_server_address = 0x7F000001;//本地
+	//m_server_address = 0xAC15418D;//远程电脑
+	m_server_address = 0x7F000001;//本地
 	m_nPort = _T("9527");
 	m_pFile = nullptr;
 	CClientController* pController = CClientController::getInstance();
