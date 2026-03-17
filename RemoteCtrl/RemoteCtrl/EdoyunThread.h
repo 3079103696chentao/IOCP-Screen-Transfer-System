@@ -109,7 +109,7 @@ private:
 					int ret = worker();//返回值小于0,则终止线程循环，大于零，则警告日志，等于0表示正常
 					if (ret != 0) {
 						CString str;
-						str.Format("thread found waring code %d\r\n", ret);
+						str.Format(L"thread found waring code %d\r\n", ret);
 						OutputDebugString(str);
 					}
 					if (ret < 0) {

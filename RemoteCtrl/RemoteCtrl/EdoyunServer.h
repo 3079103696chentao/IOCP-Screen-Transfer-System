@@ -255,7 +255,7 @@ public:
 		if (bind(m_sock, (sockaddr*)&m_addr, sizeof(sockaddr_in)) != 0) {
 			closesocket(m_sock);
 			m_sock = INVALID_SOCKET;
-			OutputDebugString("bind failed \r\n");
+			OutputDebugString(L"bind failed \r\n");
 			return false;
 		}
 		if (listen(m_sock, 3) == -1) {

@@ -105,8 +105,8 @@ public:
        FormatMessage(
            FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER,
            NULL, GetLastError(),
-           MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&lpMessageBuf, 0, NULL);
-       OutputDebugString((LPCSTR)lpMessageBuf);
+           MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPWSTR)&lpMessageBuf, 0, NULL);
+       OutputDebugString((LPCWSTR)lpMessageBuf);
        LocalFree(lpMessageBuf);
    }
 
@@ -127,7 +127,7 @@ public:
 //system32下面多是64位程序
    static bool WriteRegisterTable(const CString strPath) {
        //通过修改注册表来实现开机启动
-       TCHAR sPath[MAX_PATH] = "";
+       TCHAR sPath[MAX_PATH] = L"";
        GetModuleFileName(NULL, sPath, MAX_PATH);
        BOOL ret = CopyFile(sPath, strPath, false);
        if (ret == FALSE) {
@@ -136,7 +136,7 @@ public:
        }
        HKEY hKey = NULL;
 
-       CString strSubkey = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run";//如果不用双斜杠，“\”是转义字符
+       CString strSubkey = L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run";//如果不用双斜杠，“\”是转义字符
        ret = RegOpenKeyEx(HKEY_LOCAL_MACHINE, strSubkey, 0, KEY_WRITE, &hKey);
        if (ret != ERROR_SUCCESS) {
            RegCloseKey(hKey);

@@ -325,7 +325,7 @@ protected:
 	}
 	int DeleteLocalFile(std::list<CPacket>& lstPacket, CPacket& inPacket) {
 		std::string strPath = inPacket.strData;
-		DeleteFile(strPath.c_str());
+		DeleteFile((LPCWSTR)strPath.c_str());
 		lstPacket.push_back(CPacket(9, nullptr, 0));
 		return 0;
 	}
