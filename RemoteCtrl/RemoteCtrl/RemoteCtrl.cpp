@@ -125,25 +125,192 @@ void iocp() {
 	getchar();
 }
 
+void initsock() {
+	WSADATA wsa;
+	WSAStartup(MAKEWORD(2, 2), &wsa);
+}
+
+void clearsock() {
+	WSACleanup();
+}
+
 void udp_server() {
+
 	printf("%s(%d):%s\r\n", __FILE__, __LINE__, __FUNCTION__);
+	SOCKET sock = socket(PF_INET, SOCK_DGRAM, 0);
+	if (sock == INVALID_SOCKET) {
+		printf("%s(%d):%s:ERROR(%d)!!!\r\n", __FILE__, __LINE__, __FUNCTION__, WSAGetLastError());
+		return;
+	}
+	std::list<sockaddr_in>lstclients;
+	sockaddr_in server_addr, client_addr;
+	memset(&server_addr, 0, sizeof(sockaddr_in));
+	memset(&client_addr, 0, sizeof(sockaddr_in));
+
+	server_addr.sin_family = AF_INET;
+	server_addr.sin_port = htons(20000); //udp端口要设的大一点，两万以上，四万一下
+	server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+
+	if (bind(sock, (sockaddr*)&server_addr, sizeof(sockaddr)) != 0) {
+		printf("%s(%d):%s ERROR %d", __FILE__, __LINE__, __FUNCTION__, WSAGetLastError()); //识别网络错误的专用函数
+		return;
+	}
+	char buffer[4096];
+	int len = sizeof(client_addr);
+	int ret = 0;
+	while (!_kbhit()) {
+		//tcp accept客户端获得客户端的套接字之后，在send和recv的时候，操作的是客户端的套接字
+		//udp服务端一直在操作自己的套接字
+		//udp通过recvfrom获取客户端的ip和port
+		//函数不一样：tcp:recv, send udp:recvfrom, sendto
+		ret = recvfrom(sock, buffer, sizeof(buffer), 0, (sockaddr*)&client_addr, &len);
+		if (ret > 0) {
+			if (lstclients.size() == 0) {
+				lstclients.push_back(client_addr);
+				printf("%s(%d):%s client1 ip:%08X, recvfrom port: %d\r\n",
+					__FILE__, __LINE__, __FUNCTION__, client_addr.sin_addr.s_addr, (ntohs)(client_addr.sin_port));
+				/*ret = sendto(sock, buffer, ret, 0, (sockaddr*)&client_addr, len);
+				if (ret > 0) {
+					printf("%s(%d):%s server send to ip:%08X, port: %d successfully\r\n",
+						__FILE__, __LINE__, __FUNCTION__, client_addr.sin_addr.s_addr, client_addr.sin_port);
+				}
+				else {
+					printf("%s(%d):%s server failed send to client ip:%08X, port: %d ret = %d, error(%d) \r\n",
+						__FILE__, __LINE__, __FUNCTION__, 
+						client_addr.sin_addr.s_addr, client_addr.sin_port, ret, WSAGetLastError());
+				}*/
+			}
+			else if (lstclients.size() > 0) {
+				printf("%s(%d):%s client2 ip:%08X, recvfrom port: %d\r\n",
+					__FILE__, __LINE__, __FUNCTION__, client_addr.sin_addr.s_addr, (ntohs)(client_addr.sin_port));
+				auto addr = lstclients.front();
+				lstclients.pop_front();
+				memset(buffer, 0, sizeof(buffer));
+				memcpy(buffer, (void*)&addr, sizeof(addr));
+				//向第二个客户端发送第一个客户端的信息
+				int ret = sendto(sock, buffer, sizeof(addr), 0, (sockaddr*)&client_addr, sizeof(client_addr));
+				break;
+			}
+			
+			//CEdoyunTool::Dump((BYTE*)buffer, ret);
+			/*printf("%s(%d):%s ip:%08X, recvfrom port: %d\r\n",
+				__FILE__, __LINE__, __FUNCTION__, client_addr.sin_addr.s_addr, client_addr.sin_port);
+			sendto(sock, buffer, ret, 0, (sockaddr*)&client_addr, len);*/
+		}
+		else {
+			printf("%s(%d):%s ERROR(%d)!!! recvfrom ret = %d\r\n", 
+				__FILE__, __LINE__, __FUNCTION__, WSAGetLastError(),ret);
+			Sleep(2000);
+		}
+		
+	}
+	closesocket(sock);
 	getchar();
 }
+	
 void udp_client(bool ishost = true) {
-	if (ishost) {
-		printf("%s(%d):%s\r\n", __FILE__, __LINE__, __FUNCTION__);
+	
+	SOCKET sock = socket(PF_INET, SOCK_DGRAM, 0);
+	if (sock == INVALID_SOCKET) {
+		printf("%s(%d):%s:ERROR(%d)!!!\r\n", __FILE__, __LINE__, __FUNCTION__, WSAGetLastError());
+		return;
 	}
-	else {
-		printf("is host == false\r\n");
+	sockaddr_in server_addr, client_addr;
+	int len = sizeof(client_addr);
+	server_addr.sin_family = AF_INET;
+	server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	server_addr.sin_port = htons(20000);
+	/*if (bind(sock, (sockaddr*)&server_addr, sizeof(sockaddr)) == -1) {
+		printf("%s(%d):%s ERROR(%d) \r\n ", __FILE__, __LINE__, __FUNCTION__, WSAGetLastError());
+		return;
+	}*/
+	
+	if (ishost) {//主客户端代码
+		//printf("%s(%d):%s\r\\n", __FILE__, __LINE__, __FUNCTION__);
+		//std::string msg = "hello world";
+		//int ret = sendto(sock, msg.c_str(), msg.size(), 0, (sockaddr*)&server_addr,sizeof(sockaddr));
+		//if (ret > 0) {
+		//	printf("%s(%d):%s client send to server sunccessfully ret = %d\r\n", __FILE__, __LINE__, __FUNCTION__, ret);
+		//	ret = recvfrom(sock, const_cast<char*>(msg.c_str()), msg.size(), 0, (sockaddr*)&client_addr, &len);
+		//	//printf("%s(%d):%s ret = %d\r\n", __FILE__, __LINE__, __FUNCTION__, ret);
+		//	if (ret > 0) {
+		//		printf("%s(%d):%s, client ip : %08X , port:%d\r\n", 
+		//			__FILE__, __LINE__, __FUNCTION__, client_addr.sin_addr.s_addr, (ntohs)(client_addr.sin_port));
+		//		printf("%s(%d):%s msg is %s\r\n", __FILE__, __LINE__, __FUNCTION__, msg.c_str());
+		//	}
+		//	else {
+		//		printf("%s(%d):%s recvfrom  client ERROR(%d) \r\n", __FILE__, __LINE__, __FUNCTION__, WSAGetLastError());;
+		//	}
+		//}
+		//else {
+		//	printf("%s(%d):%s send to server ERROR(%d)\r\n", __FILE__, __LINE__, __FUNCTION__, WSAGetLastError());
+		//}
+		std::string msg = "hello world";
+		int ret = sendto(sock, msg.c_str(), msg.size(), 0, (sockaddr*)&server_addr, sizeof(sockaddr));//client1向客户端发送消息
+		if (ret > 0) {
+			msg.resize(1024);
+			memset((char*)msg.c_str(), 0, 1024);
+			ret = recvfrom(sock, (char*)msg.c_str(), msg.size(), 0, (sockaddr*)&client_addr, &len);//这次接收到到的应该是client2的消息
+			if (ret > 0) {
+				printf("%s(%d):%s, client2 ip : %08X , port:%d\r\n",
+					__FILE__, __LINE__, __FUNCTION__, client_addr.sin_addr.s_addr, (ntohs)(client_addr.sin_port));
+				printf("%s\r\n", msg.c_str());
+			}
+			else {
+				printf("%s(%d):%s get from cleint2  ERROR(%d)\r\n", __FILE__, __LINE__, __FUNCTION__, WSAGetLastError());
+			}
+		}
 	}
-
-
-}
+		else {//从客户端代码
+			Sleep(100);//client2后发送
+			//printf("%s(%d):%s\r\\n", __FILE__, __LINE__, __FUNCTION__);
+			//std::string msg = "hello world";
+			//int ret = sendto(sock, msg.c_str(), msg.size(), 0, (sockaddr*)&server_addr, sizeof(sockaddr));
+			//if (ret > 0) {
+			//	printf("%s(%d):%s client send to server sunccessfully ret = %d\r\n", __FILE__, __LINE__, __FUNCTION__, ret);
+			//	ret = recvfrom(sock, const_cast<char*>(msg.c_str()), msg.size(), 0, (sockaddr*)&client_addr, &len);
+			//	//printf("%s(%d):%s ret = %d\r\n", __FILE__, __LINE__, __FUNCTION__, ret);
+			//	if (ret > 0) {
+			//		printf("%s(%d):%s, client ip : %08X , port:%d\r\n",
+			//			__FILE__, __LINE__, __FUNCTION__, client_addr.sin_addr.s_addr, (ntohs)(client_addr.sin_port));
+			//		printf("%s(%d):%s msg is %s\r\n", __FILE__, __LINE__, __FUNCTION__, msg.c_str());
+			//	}
+			//	else {
+			//		printf("%s(%d):%s recvfrom  client ERROR(%d) \r\n", __FILE__, __LINE__, __FUNCTION__, WSAGetLastError());;
+			//	}
+			//}
+			//else {
+			//	printf("%s(%d):%s send to server ERROR(%d)\r\n", __FILE__, __LINE__, __FUNCTION__, WSAGetLastError());
+			//}
+			std::string msg = "hello world";
+			int ret = sendto(sock, msg.c_str(), msg.size(), 0, (sockaddr*)&server_addr, sizeof(sockaddr));//client2向服务端发送消息
+			if (ret > 0) {
+				msg.resize(1024);
+				memset((char*)msg.c_str(), 0, 1024);
+				ret = recvfrom(sock, const_cast<char*>(msg.c_str()), msg.size(), 0, (sockaddr*)&client_addr, &len);
+				if (ret > 0) {
+					sockaddr_in* client1_addr = (sockaddr_in*)(msg.c_str());
+					printf("%s(%d):%s, client1 ip : %08X , port:%d\r\n",
+						__FILE__, __LINE__, __FUNCTION__, client1_addr->sin_addr.s_addr, (ntohs)(client1_addr->sin_port));
+					std::string msg1 = "hello, I am client2";
+					ret = sendto(sock, msg1.c_str(), msg1.size(), 0, (sockaddr*)client1_addr, sizeof(sockaddr));//client2向client1发送消息
+					if (ret > 0) {
+						printf("client2向client1发送消息\r\n");
+					}
+					else {
+						printf("%s(%d):%sclient2 failed to send the msg to client1, error(%d)\r\n", __FILE__, __LINE__, __FUNCTION__, WSAGetLastError());
+					}
+				}
+				closesocket(sock);
+			}
+		}
+	}
 
 
 int main(int argc, char* argv[])
 {
 	
+	initsock();
 	if (!CEdoyunTool::Init()) return 1;
 	
 	if (argc == 1) {
@@ -206,7 +373,7 @@ int main(int argc, char* argv[])
 		}
 		return 0;
 	}*/
-
+	clearsock();
 	return 0;
 }
 
